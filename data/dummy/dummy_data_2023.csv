@@ -1,0 +1,43 @@
+Date,Transaction Type,Category,Account,Amount,Notes,E,Year,Month
+2023-01-11,Reddito,Supporto Famiglia,Risparmi,450,"Zio Roberto",120.0,2023,2023-01
+2023-01-18,Spesa,Abbigliamento,Risparmi,45,"Nuovi Jeans",-45.0,2023,2023-01
+2023-01-24,Spesa,Cura della Persona,Risparmi,120,"Visita Medica",-60.0,2023,2023-01
+2023-01-28,Reddito,Stipendio,Risparmi,1800,"Stipendio Gennaio",1800.0,2023,2023-01
+2023-02-04,Reddito,Risparmi,Risparmi,50,"Vendita vecchio cellulare",50.0,2023,2023-02
+2023-02-15,Spesa,Alimentari,Risparmi,32.5,"Spesa Esselunga",-32.5,2023,2023-02
+2023-02-26,Spesa,Ristorante,Risparmi,70,"Cena San Valentino ritardata",-70.0,2023,2023-02
+2023-02-28,Reddito,Stipendio,Risparmi,1850,"Stipendio Febbraio",1850.0,2023,2023-02
+2023-03-10,Spesa,Ristorante,Risparmi,30,"Cena sushi con amici",-30.0,2023,2023-03
+2023-03-20,Spesa,Alimentari,Risparmi,100,"Grande spesa settimanale",-100.0,2023,2023-03
+2023-03-28,Reddito,Stipendio,Risparmi,1750,"Stipendio Marzo",1750.0,2023,2023-03
+2023-04-01,Reddito,Supporto Famiglia,Risparmi,300,"Nonna Maria",100.0,2023,2023-04
+2023-04-12,Spesa,Cura della Persona,Risparmi,35,"Prodotti da bagno",-12.5,2023,2023-04
+2023-04-27,Spesa,Varie,Risparmi,15,"Libri",-15.0,2023,2023-04
+2023-04-28,Reddito,Stipendio,Risparmi,1700,"Stipendio Aprile",1700.0,2023,2023-04
+2023-05-15,Spesa,Benzina,Risparmi,50,"Pieno auto",-50.0,2023,2023-05
+2023-05-25,Spesa,Alimentari,Risparmi,37,"Spesa Bio",-37.0,2023,2023-05
+2023-05-28,Reddito,Stipendio,Risparmi,1880,"Stipendio Maggio",1880.0,2023,2023-05
+2023-06-03,Reddito,Risparmi,Risparmi,300,"Vendita vecchia bicicletta",300.0,2023,2023-06
+2023-06-12,Spesa,Divertimento,Risparmi,30,"Concerto Rock",-30.0,2023,2023-06
+2023-06-26,Spesa,Ristorante,Risparmi,50,"Cena romantica",-50.0,2023,2023-06
+2023-06-28,Reddito,Stipendio,Risparmi,1780,"Stipendio Giugno",1780.0,2023,2023-06
+2023-07-15,Spesa,Alimentari,Risparmi,60,"Spesa Settimanale",-60.0,2023,2023-07
+2023-07-27,Spesa,Divertimento,Risparmi,18,"Cinema con amici",-18.0,2023,2023-07
+2023-07-28,Reddito,Stipendio,Risparmi,1802,"Stipendio Luglio",1802.0,2023,2023-07
+2023-08-03,Reddito,Supporto Famiglia,Risparmi,345,"Zia Lucia",150.0,2023,2023-08
+2023-08-20,Spesa,Vacanze,Risparmi,400,"Prenotazione hotel",-400.0,2023,2023-08
+2023-08-25,Spesa,Alimentari,Risparmi,30,"Spesa per picnic",-30.0,2023,2023-08
+2023-08-28,Reddito,Stipendio,Risparmi,1702,"Stipendio Agosto",1702.0,2023,2023-08
+2023-09-10,Spesa,Alimentari,Risparmi,45,"Spesa settimanale",-45.0,2023,2023-09
+2023-09-20,Spesa,Cura della Casa,Risparmi,80,"Acquisto elettrodomestico",-80.0,2023,2023-09
+2023-09-28,Reddito,Stipendio,Risparmi,1900,"Stipendio Settembre",1900.0,2023,2023-09
+2023-10-02,Reddito,Supporto Famiglia,Risparmi,300,"Nonno Mario",200.0,2023,2023-10
+2023-10-10,Spesa,Abbigliamento,Risparmi,60,"Acquisto giacca autunno",-60.0,2023,2023-10
+2023-10-20,Spesa,Benzina,Risparmi,40,"Rifornimento auto",-40.0,2023,2023-10
+2023-10-28,Reddito,Stipendio,Risparmi,1780,"Stipendio Settembre",1780.0,2023,2023-10
+2023-11-15,Spesa,Alimentari,Risparmi,50,"Spesa settimanale",-50.0,2023,2023-11
+2023-11-18,Spesa,Varie,Risparmi,30,"Regali di Natale",-30.0,2023,2023-11
+2023-11-28,Reddito,Stipendio,Risparmi,1910,"Stipendio Novembre",1910.0,2023,2023-11
+2023-12-10,Spesa,Alimentari,Risparmi,70,"Spesa Natale",-70.0,2023,2023-12
+2023-12-20,Spesa,Divertimento,Risparmi,50,"Cena di fine anno",-50.0,2023,2023-12
+2023-12-28,Reddito,Stipendio,Risparmi,1920,"Stipendio Dicembre",1920.0,2023,2023-12
