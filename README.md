@@ -1,2 +1,13 @@
-# expenses-tracker
- Generates a report for your expenses 
+# Expenses Tracker
+
+## Author
+
+Daniele Passabì
+
+## Example of Report
+
+It follows an example report, generated using some dummy data for the year 2023.
+
+<p align="center">
+  <img src="reports/dummy/report_2023.png" alt="Dummy Report 2023">
+</p>
