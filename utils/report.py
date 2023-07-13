@@ -16,33 +16,29 @@ from plotly.subplots import make_subplots
 
 # global variables
 
-PASTEL_COLORS = [
-    '#cc7a7a',
-    '#cc8a7a',
-    '#cc9b7a',
-    '#ccab7a',
-    '#cccc7a',
-    '#bbcc7a',
-    '#abcc7a',
-    '#9bcc7a',
-    '#7acc7a',
-    '#7acc8a',
-    '#7acc9b',
-    '#7accab',
-    '#7accbb',
-    '#7acccc',
-    '#7abbcc',
-    '#7aabcc',
-    '#7a8acc',
-    '#7a7acc',
-    '#8a7acc',
-    '#ab7acc',
-    '#bb7acc',
-    '#cc7acc',
-    '#cc7abb',
-    '#cc7a9b',
-    '#cc7a8a'
-    ]
+PALETTE_COLORS = [
+    'rgba(241, 243, 206, 0.8)',
+    'rgba(245, 228, 102, 0.8)',
+    'rgba(242, 206, 203, 0.8)',
+    'rgba(224, 168, 144, 0.8)',
+    'rgba(140,  57,  57, 0.8)',
+    'rgba(232, 156, 232, 0.8)',
+    'rgba(194, 133, 255, 0.8)',
+    'rgba(147, 129, 255, 0.8)',
+    'rgba(208, 254, 245, 0.8)',
+    'rgba(129, 210, 199, 0.8)',
+    'rgba( 73, 202, 253, 0.8)',
+    'rgba(100, 141, 229, 0.8)',
+    'rgba(140, 160, 215, 0.8)',
+    'rgba( 65, 103, 136, 0.8)',
+    'rgba(237, 235, 242, 0.8)',
+]
+
+
+EXPENSES_COLOR = 'rgba(204, 122, 171, 1)'
+EXPENSES_COLOR_TRANSLUCENT = 'rgba(204, 122, 171, 0.8)'
+INCOME_COLOR = 'rgba(138, 204, 122, 1)'
+INCOME_COLOR_TRANSLUCENT = 'rgba(138, 204, 122, 0.8)'
 
 
 class ReportGenerator:
@@ -71,7 +67,7 @@ class ReportGenerator:
         # find categories with no color assigned
         unique_categories = self.__get_unique_categories()
         already_assigned_categories = set(self.category_color_dict.keys())
-        unique_categories = unique_categories - already_assigned_categories
+        unique_categories = sorted(list(unique_categories - already_assigned_categories))
 
         # obtain colors and assign them
         colors_to_assign = self.__get_distant_colors(n_colors=len(unique_categories))
@@ -194,7 +190,15 @@ class ReportGenerator:
         # additional info
         income_total = round(sum(dataset_income['Amount']))
         expenses_total = round(sum(dataset_expenses['Amount']))
-        subtitle = f"<br><sup><br>Total Income: {income_total}€<br>Total Expenses: {expenses_total}€</sup>"
+        profit = income_total - expenses_total
+
+        # determine the color and sign of the profit value
+        if profit >= 0:
+            profit_str = f'<span style="color: {INCOME_COLOR};">{profit}€</span>'
+        else:
+            profit_str = f'<span style="color: {EXPENSES_COLOR};">{profit}€</span>'
+
+        subtitle = f"<br><sup><br>Total Income: {income_total}€<br>Total Expenses: {expenses_total}€<br>Profit: {profit_str}</sup>"
 
         fig.add_trace(
             go.Scatterpolar(
@@ -207,6 +211,7 @@ class ReportGenerator:
                 fill='toself',
                 hoverinfo='r',
                 hovertemplate='Income by %{theta}: %{r} (€)',
+                line=dict(color=INCOME_COLOR)
             ),
             row=1,
             col=1,
@@ -223,6 +228,7 @@ class ReportGenerator:
                 fill='toself',
                 hoverinfo='r',
                 hovertemplate='Expenses by %{theta}: %{r} (€)',
+                line=dict(color=EXPENSES_COLOR)
             ),
             row=1,
             col=2,
@@ -348,7 +354,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color='#cc7aab'),
+                line=dict(color=EXPENSES_COLOR),
                 hovertemplate='Expenses of %{x}: %{y}€',
                 ))
         
@@ -384,7 +390,7 @@ class ReportGenerator:
                 x=expenses_df['Month'],
                 y=[expenses_mean]*len(expenses_df['Month']),
                 mode='lines',
-                line=dict(color='#cc7aab', width=1.5, dash='dash'),
+                line=dict(color=EXPENSES_COLOR, width=1.5, dash='dash'),
                 name='Mean Expenses',
                 hovertemplate='Mean Expenses: %{y}€',
                 visible='legendonly'
@@ -493,7 +499,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color='#cc7aab'),
+                line=dict(color=EXPENSES_COLOR),
                 hovertemplate='Cumulative Expenses up to %{x}: %{y}€',
                 ))
 
@@ -596,7 +602,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Spese',
                 textposition='top center',
-                line=dict(color='rgba(255, 100, 70, 0.8)', dash='dot'),
+                line=dict(color=EXPENSES_COLOR_TRANSLUCENT, dash='dot'),
                 hovertemplate='Total Expenses: %{y}€',
                 ))
 
@@ -809,7 +815,15 @@ class ReportGenerator:
             tot_income = int(round(sum(df_temp['Amount'])))
             df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
             tot_expenses = int(round(sum(df_temp['Amount'])))
-            subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€</sup>"
+            profit = tot_income - tot_expenses
+
+            # determine the color and sign of the profit value
+            if profit >= 0:
+                profit_str = f'<span style="color: {INCOME_COLOR};">{profit}€</span>'
+            else:
+                profit_str = f'<span style="color: {EXPENSES_COLOR};">{profit}€</span>'
+
+            subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€<br>Profit: {profit_str}</sup>"
 
             step = dict(
                 method="update",
@@ -834,7 +848,15 @@ class ReportGenerator:
         tot_income = int(round(sum(df_temp['Amount'])))
         df_temp = expenses_df[expenses_df['Month'] == expenses_months[0]]
         tot_expenses = int(round(sum(df_temp['Amount'])))
-        subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€</sup>"
+        profit = tot_income - tot_expenses
+
+        # determine the color and sign of the profit value
+        if profit >= 0:
+            profit_str = f'<span style="color: {INCOME_COLOR};">{profit}€</span>'
+        else:
+            profit_str = f'<span style="color: {EXPENSES_COLOR};">{profit}€</span>'
+
+        subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€<br>Profit: {profit_str}</sup>"
 
         # add title, width, legend, ...
         fig.update_layout(
@@ -860,12 +882,12 @@ class ReportGenerator:
 
     def __get_distant_colors(self, n_colors):
 
-        if n_colors <= 0 or n_colors > len(PASTEL_COLORS):
-            raise ValueError(f"n must be between 1 and {len(PASTEL_COLORS)}")
+        if n_colors <= 0 or n_colors > len(PALETTE_COLORS):
+            raise ValueError(f"n must be between 1 and {len(PALETTE_COLORS)}")
 
-        step = len(PASTEL_COLORS) // (n_colors - 1)
+        step = len(PALETTE_COLORS) // (n_colors - 1)
 
-        return [PASTEL_COLORS[min(i * step, len(PASTEL_COLORS)-1)] for i in range(n_colors)]
+        return [PALETTE_COLORS[min(i * step, len(PALETTE_COLORS)-1)] for i in range(n_colors)]
 
 
     def __save_list_of_plotly_figs(self, path, fig_list, title="My Report"):
@@ -898,16 +920,23 @@ class ReportGenerator:
             with open(path, "w", encoding="utf-8") as output_file:
                 output_file.write(
                     f"""
-                    <style>
-                        .centered {{
-                            text-align: center;
-                            width: 1980px;
-                            margin: 0 auto;
-                        }}
-                        h1 {{
-                            font-family: 'Open Sans', sans-serif;
-                        }}
-                    </style>
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>{title}</title>
+                        <link rel="icon" type="image/svg" href="../utils/images/chart.svg">
+                        <style>
+                            .centered {{
+                                text-align: center;
+                                width: 1980px;
+                                margin: 0 auto;
+                            }}
+                            h1 {{
+                                font-family: 'Open Sans', sans-serif;
+                            }}
+                        </style>
+                    </head>
+                    <body>
                     <div class='centered'>
                         <br><h1>{title}</h1><br>
                     """
