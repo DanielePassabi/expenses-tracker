@@ -22,6 +22,8 @@ from .preprocessing import preprocess_csv, AVAILABLE_PREPROCESSING_APPS
 
 # global variables
 
+PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 PALETTE_COLORS = [
     'rgba(241, 243, 206, 0.8)',
     'rgba(245, 228, 102, 0.8)',
@@ -933,6 +935,9 @@ class ReportGenerator:
         If the HTML file specified by the 'path' parameter already exists, it will be overwritten.
         """
         try:
+
+            icon_path = str(os.path.join(PACKAGE_DIR, '..', 'images', 'chart.svg'))
+
             with open(path, "w", encoding="utf-8") as output_file:
                 output_file.write(
                     f"""
@@ -940,7 +945,7 @@ class ReportGenerator:
                     <html>
                     <head>
                         <title>{title}</title>
-                        <link rel="icon" type="image/svg" href="../utils/images/chart.svg">
+                        <link rel="icon" type="image/svg" href="{icon_path}">
                         <style>
                             .centered {{
                                 text-align: center;
