@@ -5,10 +5,10 @@
 *.pyc
 
 # personal datasets
-data/raw/app_data.csv
-data/preprocessed/app_data_*.csv
-reports/report_*.html
-
+data/raw/*.csv
+!data/raw/dummy_data.csv
+reports/*/*
+!reports/dummy/*
 
 ## DEFAULT
 

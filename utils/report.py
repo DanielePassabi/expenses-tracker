@@ -3,15 +3,21 @@ Dataviz Utils
 """
 
 # Custom Pylint rules for the file
-# pylint: disable=W0718 C0301
+# pylint: disable=W0718 C0301 E0402
 # W0718:broad-exception-caught
 # C0301:line-too-long
+# E0402:relative-beyond-top-level
 
+
+# Libraries
 import os
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# Custom functions
+from .preprocessing import preprocess_csv, AVAILABLE_PREPROCESSING_APPS
 
 
 # global variables
@@ -34,7 +40,6 @@ PALETTE_COLORS = [
     'rgba(237, 235, 242, 0.8)',
 ]
 
-
 EXPENSES_COLOR = 'rgba(204, 122, 171, 1)'
 EXPENSES_COLOR_TRANSLUCENT = 'rgba(204, 122, 171, 0.8)'
 INCOME_COLOR = 'rgba(138, 204, 122, 1)'
@@ -45,7 +50,7 @@ class ReportGenerator:
     """
     ReportGenerator Class
     """
-    def __init__(self, datasets_path, save_path, category_color_dict=None):
+    def __init__(self, csv_path, save_path, app="dummy", category_color_dict=None):
 
         self.datasets = {}
         self.report_generators = {}
@@ -53,31 +58,42 @@ class ReportGenerator:
         self.save_path = save_path
 
         # iterate over available years
-        available_dfs = os.listdir(datasets_path)
-        for df_path in available_dfs:
-            year = df_path.split('.')[0][-4:]
-            self.datasets[year] = pd.read_csv(os.path.join(datasets_path,df_path))
-            self.reports[year] = []
+        if app in AVAILABLE_PREPROCESSING_APPS:
 
-        # setup color palette
-        self.category_color_dict = category_color_dict
-        if self.category_color_dict is None:
-            self.category_color_dict = {}
+            # store available dataset (with 'Year' as key)
+            available_datasets = preprocess_csv(csv_path, app=app)
+            for dataset in available_datasets:
+                year = str(dataset['Year'].iloc[0])
+                self.datasets[year] = dataset
+                self.reports[year] = []
 
-        # find categories with no color assigned
-        unique_categories = self.__get_unique_categories()
-        already_assigned_categories = set(self.category_color_dict.keys())
-        unique_categories = sorted(list(unique_categories - already_assigned_categories))
+            # setup color palette
+            self.category_color_dict = category_color_dict
+            if self.category_color_dict is None:
+                self.category_color_dict = {}
 
-        # obtain colors and assign them
-        colors_to_assign = self.__get_distant_colors(n_colors=len(unique_categories))
-        for idx,category in enumerate(unique_categories):
-            self.category_color_dict[category] = colors_to_assign[idx]
+            # find categories with no color assigned
+            unique_categories = self.__get_unique_categories()
+            already_assigned_categories = set(self.category_color_dict.keys())
+            unique_categories = sorted(list(unique_categories - already_assigned_categories))
 
-        # finally, sort the dict by key (for better datavizs)
-        self.category_color_dict = dict(sorted(self.category_color_dict.items()))
+            # obtain colors and assign them
+            colors_to_assign = self.__get_distant_colors(n_colors=len(unique_categories))
+            for idx,category in enumerate(unique_categories):
+                self.category_color_dict[category] = colors_to_assign[idx]
 
-        print("Report Generator Ready")
+            # finally, sort the dict by key (for better datavizs)
+            self.category_color_dict = dict(sorted(self.category_color_dict.items()))
+
+            # create save path
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+
+            print("Report Generator Ready")
+
+        else:
+            print(f"Sorry, application {app} is not supported. Please choose between: {AVAILABLE_PREPROCESSING_APPS}")
+            return None
 
 
     # MAIN FUNCTION
