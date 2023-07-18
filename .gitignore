@@ -6,6 +6,7 @@
 
 # personal datasets
 data/raw/*.csv
+data/raw/*.html
 !data/raw/dummy_data.csv
 reports/*/*
 !reports/dummy/*

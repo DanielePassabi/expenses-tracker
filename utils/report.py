@@ -24,78 +24,82 @@ from .preprocessing import preprocess_csv, AVAILABLE_PREPROCESSING_APPS
 
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-PALETTE_COLORS = [
-    'rgba(241, 243, 206, 0.8)',
-    'rgba(245, 228, 102, 0.8)',
-    'rgba(242, 206, 203, 0.8)',
-    'rgba(224, 168, 144, 0.8)',
-    'rgba(140,  57,  57, 0.8)',
-    'rgba(232, 156, 232, 0.8)',
-    'rgba(194, 133, 255, 0.8)',
-    'rgba(147, 129, 255, 0.8)',
-    'rgba(208, 254, 245, 0.8)',
-    'rgba(129, 210, 199, 0.8)',
-    'rgba( 73, 202, 253, 0.8)',
-    'rgba(100, 141, 229, 0.8)',
-    'rgba(140, 160, 215, 0.8)',
-    'rgba( 65, 103, 136, 0.8)',
-    'rgba(237, 235, 242, 0.8)',
-]
-
-EXPENSES_COLOR = 'rgba(204, 122, 171, 1)'
-EXPENSES_COLOR_TRANSLUCENT = 'rgba(204, 122, 171, 0.8)'
-INCOME_COLOR = 'rgba(138, 204, 122, 1)'
-INCOME_COLOR_TRANSLUCENT = 'rgba(138, 204, 122, 0.8)'
-
-
 class ReportGenerator:
     """
     ReportGenerator Class
     """
-    def __init__(self, csv_path, save_path, app="dummy", category_color_dict=None):
+    def __init__(
+        self,
+        csv_path,
+        save_path,
+        app="dummy",
+        app_custom_dict=None,
+        category_color_dict=None
+        ):
 
         self.datasets = {}
         self.report_generators = {}
         self.reports = {}
         self.save_path = save_path
 
-        # iterate over available years
-        if app in AVAILABLE_PREPROCESSING_APPS:
+        # store available dataset (with 'Year' as key)
+        available_datasets = preprocess_csv(csv_path, app=app, app_custom_dict=app_custom_dict)
+        self.datasets['all'] = pd.concat(available_datasets)
+        self.reports['all'] = []
+        for dataset in available_datasets:
+            year = str(dataset['Year'].iloc[0])
+            self.datasets[year] = dataset
+            self.reports[year] = []
 
-            # store available dataset (with 'Year' as key)
-            available_datasets = preprocess_csv(csv_path, app=app)
-            for dataset in available_datasets:
-                year = str(dataset['Year'].iloc[0])
-                self.datasets[year] = dataset
-                self.reports[year] = []
+        # handle colors
+        self.PALETTE_COLORS = [
+            'rgba(241, 243, 206, 0.8)',
+            'rgba(245, 228, 102, 0.8)',
+            'rgba(242, 206, 203, 0.8)',
+            'rgba(224, 168, 144, 0.8)',
+            'rgba(140,  57,  57, 0.8)',
+            'rgba(232, 156, 232, 0.8)',
+            'rgba(194, 133, 255, 0.8)',
+            'rgba(147, 129, 255, 0.8)',
+            'rgba(208, 254, 245, 0.8)',
+            'rgba(129, 210, 199, 0.8)',
+            'rgba( 73, 202, 253, 0.8)',
+            'rgba(100, 141, 229, 0.8)',
+            'rgba(140, 160, 215, 0.8)',
+            'rgba( 65, 103, 136, 0.8)',
+            'rgba(237, 235, 242, 0.8)'
+        ]
 
-            # setup color palette
-            self.category_color_dict = category_color_dict
-            if self.category_color_dict is None:
-                self.category_color_dict = {}
+        self.EXPENSES_COLOR = 'rgba(204, 122, 171, 1)'
+        self.EXPENSES_COLOR_TRANSLUCENT = 'rgba(204, 122, 171, 0.8)'
+        self.INCOME_COLOR = 'rgba(138, 204, 122, 1)'
+        self.INCOME_COLOR_TRANSLUCENT = 'rgba(138, 204, 122, 0.8)'
+        self.INCOME_AND_SUPPORT_COLOR = 'rgba(100, 141, 229, 1)'
+        self.INCOME_AND_SUPPORT_COLOR_TRANSLUCENT = 'rgba(100, 141, 229, 0.8)'
 
-            # find categories with no color assigned
-            unique_categories = self.__get_unique_categories()
-            already_assigned_categories = set(self.category_color_dict.keys())
-            unique_categories = sorted(list(unique_categories - already_assigned_categories))
+        # setup color palette
+        self.category_color_dict = category_color_dict
+        if self.category_color_dict is None:
+            self.category_color_dict = {}
 
-            # obtain colors and assign them
-            colors_to_assign = self.__get_distant_colors(n_colors=len(unique_categories))
-            for idx,category in enumerate(unique_categories):
-                self.category_color_dict[category] = colors_to_assign[idx]
+        # find categories with no color assigned
+        unique_categories = self.__get_unique_categories()
+        already_assigned_categories = set(self.category_color_dict.keys())
+        unique_categories = sorted(list(unique_categories - already_assigned_categories))
 
-            # finally, sort the dict by key (for better datavizs)
-            self.category_color_dict = dict(sorted(self.category_color_dict.items()))
+        # obtain colors and assign them
+        colors_to_assign = self.__get_distant_colors(n_colors=len(unique_categories))
+        for idx,category in enumerate(unique_categories):
+            self.category_color_dict[category] = colors_to_assign[idx]
 
-            # create save path
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
+        # finally, sort the dict by key (for better datavizs)
+        self.category_color_dict = dict(sorted(self.category_color_dict.items()))
 
-            print("Report Generator Ready")
+        # create save path
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
 
-        else:
-            print(f"Sorry, application {app} is not supported. Please choose between: {AVAILABLE_PREPROCESSING_APPS}")
-            return None
+        print("Report Generator Ready")
 
 
     # MAIN FUNCTION
@@ -212,9 +216,9 @@ class ReportGenerator:
 
         # determine the color and sign of the profit value
         if profit >= 0:
-            profit_str = f'<span style="color: {INCOME_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.INCOME_COLOR};">{profit}€</span>'
         else:
-            profit_str = f'<span style="color: {EXPENSES_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.EXPENSES_COLOR};">{profit}€</span>'
 
         subtitle = f"<br><sup><br>Total Income: {income_total}€<br>Total Expenses: {expenses_total}€<br>Profit: {profit_str}</sup>"
 
@@ -229,7 +233,7 @@ class ReportGenerator:
                 fill='toself',
                 hoverinfo='r',
                 hovertemplate='Income by %{theta}: %{r} (€)',
-                line=dict(color=INCOME_COLOR)
+                line=dict(color=self.INCOME_COLOR)
             ),
             row=1,
             col=1,
@@ -246,7 +250,7 @@ class ReportGenerator:
                 fill='toself',
                 hoverinfo='r',
                 hovertemplate='Expenses by %{theta}: %{r} (€)',
-                line=dict(color=EXPENSES_COLOR)
+                line=dict(color=self.EXPENSES_COLOR)
             ),
             row=1,
             col=2,
@@ -316,6 +320,7 @@ class ReportGenerator:
         income_df = dataset.loc[
             (dataset['Transaction Type'] == 'Reddito') & (dataset['Category'] != 'Supporto Famiglia')
             ]
+
         income_df = income_df.groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
         income_df['Amount_label'] = round(income_df['Amount']).astype(int).astype(str) + '€'
 
@@ -346,7 +351,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income',
                 textposition='top center',
-                line=dict(color=self.category_color_dict['Stipendio']),
+                line=dict(color=self.INCOME_COLOR),
                 hovertemplate='Income of %{x}: %{y}€',
                 ))
 
@@ -359,7 +364,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income + Support',
                 textposition='top center',
-                line=dict(color=self.category_color_dict['Supporto Famiglia']),
+                line=dict(color=self.INCOME_AND_SUPPORT_COLOR),
                 hovertemplate='Income+Support of %{x}: %{y}€',
                 ))
 
@@ -372,17 +377,17 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color=EXPENSES_COLOR),
+                line=dict(color=self.EXPENSES_COLOR),
                 hovertemplate='Expenses of %{x}: %{y}€',
                 ))
-        
+
         # add mean line for Income
         fig.add_trace(
             go.Scatter(
                 x=income_df['Month'],
                 y=[income_mean]*len(income_df['Month']),
                 mode='lines',
-                line=dict(color=self.category_color_dict['Stipendio'], width=1.5, dash='dash'),
+                line=dict(color=self.INCOME_COLOR, width=1.5, dash='dash'),
                 name='Mean Income',
                 hovertemplate='Mean Income: %{y}€',
                 visible='legendonly'
@@ -395,7 +400,7 @@ class ReportGenerator:
                 x=income_and_support_df['Month'],
                 y=[income_support_mean]*len(income_and_support_df['Month']),
                 mode='lines',
-                line=dict(color=self.category_color_dict['Supporto Famiglia'], width=1.5, dash='dash'),
+                line=dict(color=self.INCOME_AND_SUPPORT_COLOR, width=1.5, dash='dash'),
                 name='Mean Income + Support',
                 hovertemplate='Mean Income+Support: %{y}€',
                 visible='legendonly'
@@ -408,7 +413,7 @@ class ReportGenerator:
                 x=expenses_df['Month'],
                 y=[expenses_mean]*len(expenses_df['Month']),
                 mode='lines',
-                line=dict(color=EXPENSES_COLOR, width=1.5, dash='dash'),
+                line=dict(color=self.EXPENSES_COLOR, width=1.5, dash='dash'),
                 name='Mean Expenses',
                 hovertemplate='Mean Expenses: %{y}€',
                 visible='legendonly'
@@ -491,7 +496,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income',
                 textposition='top center',
-                line=dict(color=self.category_color_dict['Stipendio']),
+                line=dict(color=self.INCOME_COLOR),
                 hovertemplate='Cumulative Income up to %{x}: %{y}€',
                 ))
 
@@ -504,7 +509,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income + Support',
                 textposition='top center',
-                line=dict(color=self.category_color_dict['Supporto Famiglia']),
+                line=dict(color=self.INCOME_AND_SUPPORT_COLOR),
                 hovertemplate='Cumulative Income+Support up to %{x}: %{y}€',
                 ))
 
@@ -517,7 +522,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color=EXPENSES_COLOR),
+                line=dict(color=self.EXPENSES_COLOR),
                 hovertemplate='Cumulative Expenses up to %{x}: %{y}€',
                 ))
 
@@ -620,7 +625,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Spese',
                 textposition='top center',
-                line=dict(color=EXPENSES_COLOR_TRANSLUCENT, dash='dot'),
+                line=dict(color=self.EXPENSES_COLOR_TRANSLUCENT, dash='dot'),
                 hovertemplate='Total Expenses: %{y}€',
                 ))
 
@@ -837,9 +842,9 @@ class ReportGenerator:
 
             # determine the color and sign of the profit value
             if profit >= 0:
-                profit_str = f'<span style="color: {INCOME_COLOR};">{profit}€</span>'
+                profit_str = f'<span style="color: {self.INCOME_COLOR};">{profit}€</span>'
             else:
-                profit_str = f'<span style="color: {EXPENSES_COLOR};">{profit}€</span>'
+                profit_str = f'<span style="color: {self.EXPENSES_COLOR};">{profit}€</span>'
 
             subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€<br>Profit: {profit_str}</sup>"
 
@@ -870,9 +875,9 @@ class ReportGenerator:
 
         # determine the color and sign of the profit value
         if profit >= 0:
-            profit_str = f'<span style="color: {INCOME_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.INCOME_COLOR};">{profit}€</span>'
         else:
-            profit_str = f'<span style="color: {EXPENSES_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.EXPENSES_COLOR};">{profit}€</span>'
 
         subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€<br>Profit: {profit_str}</sup>"
 
@@ -900,12 +905,13 @@ class ReportGenerator:
 
     def __get_distant_colors(self, n_colors):
 
-        if n_colors <= 0 or n_colors > len(PALETTE_COLORS):
-            raise ValueError(f"n must be between 1 and {len(PALETTE_COLORS)}")
+        if n_colors <= 0 or n_colors > len(self.PALETTE_COLORS):
+            self.PALETTE_COLORS = self.PALETTE_COLORS + self.PALETTE_COLORS
+            return self.__get_distant_colors(n_colors)
 
-        step = len(PALETTE_COLORS) // (n_colors - 1)
+        step = len(self.PALETTE_COLORS) // (n_colors - 1)
 
-        return [PALETTE_COLORS[min(i * step, len(PALETTE_COLORS)-1)] for i in range(n_colors)]
+        return [self.PALETTE_COLORS[min(i * step, len(self.PALETTE_COLORS)-1)] for i in range(n_colors)]
 
 
     def __save_list_of_plotly_figs(self, path, fig_list, title="My Report"):

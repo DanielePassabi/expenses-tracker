@@ -13,11 +13,47 @@ Available Preprocessing Apps
 # Libraries
 import pandas as pd
 
+AVAILABLE_PREPROCESSING_APPS = {
 
-AVAILABLE_PREPROCESSING_APPS = ['dummy', 'fleur']
+    # no operations needed for dummy
+    'dummy': {},
+
+    'fleur': {
+        'delete_rows': {
+            'start': 0,
+            'end': -1
+        },
+        'columns_to_drop': ['E'],
+    },
+
+    '1money': {
+        'delete_rows': {
+            'start': 0,
+            'end': -5
+        },
+        'columns_to_drop': ['TAG','VALUTA 2','IMPORTO 2','VALUTA'],
+        'columns_to_rename': {
+            'DATA': 'Date',
+            'TIPOLOGIA': 'Transaction Type',
+            'AL CONTO / ALLA CATEGORIA': 'Category',
+            'IMPORTO': 'Amount',
+            'NOTE': 'Notes',
+            'DAL CONTO': 'Account'
+        },
+        'values_to_rename': {
+            'Transaction Type': {
+                'Entrata': 'Reddito'
+            }
+        },
+        'date_format': '%d/%m/%y'
+    },
+
+    'inbank': {}
+
+}
 
 
-def preprocess_csv(csv_path: str, app: str='dummy'):
+def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
     """
     Import a CSV file and perform some preprocessing operations based on the specified application. 
 
@@ -38,43 +74,70 @@ def preprocess_csv(csv_path: str, app: str='dummy'):
 
     # * GENERAL *
 
-    # import original dataset
-    dataset = pd.read_csv(csv_path)
+    # 1. import original dataset
+    dataset = pd.read_csv(csv_path, on_bad_lines='warn')
 
-    # * CUSTOM *
+    # * APPLY CUSTOM RULES *
 
-    if app == 'dummy':
-        print("Dummy dataset selected")
+    if app in AVAILABLE_PREPROCESSING_APPS:
+        print(f"Starting preprocessing for app '{app}'")
+        settings = AVAILABLE_PREPROCESSING_APPS[app]
 
-    elif app == 'fleur':
-
-        # delete last row (misleading)
-        dataset = dataset[:-1]
-
-        # add information about year and month
-        dataset["Date"] = pd.to_datetime(dataset["Date"])
-        dataset["Year"] = dataset["Date"].dt.year
-        dataset["Month"] = dataset["Date"].dt.to_period('M')
-
-        # convert column based on type
-
-        # str for dates, months, ...
-        dataset["Date"] = dataset["Date"].astype(str)
-        dataset["Month"] = dataset["Month"].astype(str)
-
-        # numeric for 'Amount' and 'E'
-        dataset['Amount'] = pd.to_numeric(dataset['Amount'], errors='coerce')
-        dataset['E'] = pd.to_numeric(dataset['E'], errors='coerce')
+    elif app == 'custom':
+        if app_custom_dict is not None:
+            print("Starting custom preprocessing")
+            settings = app_custom_dict
+        else:
+            print("Sorry, you have to provide an 'app_custom_dict' for your custom application.")
+            return []
 
     else:
-        print(f"Sorry, application {app} is not supported. Please choose between: {AVAILABLE_PREPROCESSING_APPS}")
+        print(f"Sorry, application {app} is not supported. Please use app='custom' and provide your own 'app_custom_dict'")
         return []
 
-    # display info on founded years in data
+    # A. Setting: 'delete_row'
+    if 'delete_rows' in settings:
+        dataset = dataset[settings['delete_rows']['start']:settings['delete_rows']['end']]
+
+    # B. Settings: 'columns_to_drop'
+    if 'columns_to_drop' in settings:
+        dataset = dataset.drop(settings['columns_to_drop'], axis=1)
+
+    # C. Settings: 'columns_to_rename'
+    if 'columns_to_rename' in settings:
+        dataset = dataset.rename(columns=settings['columns_to_rename'])
+
+    # D. Settings: 'values_to_rename'
+    if 'values_to_rename' in settings:
+        for col in settings['values_to_rename']:
+            for key,value in settings['values_to_rename'][col].items():
+                dataset[col] = dataset[col].replace(key,value)
+
+    # E. Settings: 'date_format'
+    if 'date_format' in settings:
+        dataset["Date"] = pd.to_datetime(dataset["Date"], format=settings['date_format'])
+
+    # * GENERAL *
+
+    # 2. add information about year and month
+    dataset["Date"] = pd.to_datetime(dataset["Date"])
+    dataset["Year"] = dataset["Date"].dt.year
+    dataset["Month"] = dataset["Date"].dt.to_period('M')
+
+    # 3. convert column based on type
+
+    # str for dates, months, ...
+    dataset["Date"] = dataset["Date"].astype(str)
+    dataset["Month"] = dataset["Month"].astype(str)
+
+    # numeric for 'Amount' and 'E'
+    dataset['Amount'] = pd.to_numeric(dataset['Amount'], errors='coerce')
+
+    # 4. display info on founded years in data
     available_years = dataset['Year'].unique().tolist()
     print(f'Found {len(available_years)} years: {available_years}')
 
-    # save all years datasets in a list and return it
+    # 5. save all years datasets in a list and return it
     datasets_list = []
     for year in available_years:
         temp_df = dataset.loc[dataset['Year'] == year].reset_index(drop=True)
