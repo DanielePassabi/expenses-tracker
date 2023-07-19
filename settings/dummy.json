@@ -1,0 +1,6 @@
+{
+    "app_csv_path": "data/raw/dummy_data.csv",
+    "save_path": "reports/dummy",
+    "app_custom_dict": null,
+    "category_color_dict": null
+}
