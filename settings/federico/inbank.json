@@ -1,0 +1,6 @@
+{
+    "app_csv_path": "data/raw/federico/inbank.csv",
+    "save_path": "reports/federico/inbank",
+    "app_custom_dict": null,
+    "category_color_dict": null
+}

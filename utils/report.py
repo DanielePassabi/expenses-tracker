@@ -51,8 +51,12 @@ class ReportGenerator:
             self.datasets[year] = dataset
             self.reports[year] = []
 
+        years = sorted(self.datasets.keys())
+        self.min_year = years[0]
+        self.max_year = years[-2]
+
         # handle colors
-        self.PALETTE_COLORS = [
+        self.palette_colors = [
             'rgba(241, 243, 206, 0.8)',
             'rgba(245, 228, 102, 0.8)',
             'rgba(242, 206, 203, 0.8)',
@@ -70,12 +74,12 @@ class ReportGenerator:
             'rgba(237, 235, 242, 0.8)'
         ]
 
-        self.EXPENSES_COLOR = 'rgba(204, 122, 171, 1)'
-        self.EXPENSES_COLOR_TRANSLUCENT = 'rgba(204, 122, 171, 0.8)'
-        self.INCOME_COLOR = 'rgba(138, 204, 122, 1)'
-        self.INCOME_COLOR_TRANSLUCENT = 'rgba(138, 204, 122, 0.8)'
-        self.INCOME_AND_SUPPORT_COLOR = 'rgba(100, 141, 229, 1)'
-        self.INCOME_AND_SUPPORT_COLOR_TRANSLUCENT = 'rgba(100, 141, 229, 0.8)'
+        self.expenses_color = 'rgba(204, 122, 171, 1)'
+        self.expenses_color_translucent = 'rgba(204, 122, 171, 0.8)'
+        self.income_color = 'rgba(138, 204, 122, 1)'
+        self.income_color_translucent = 'rgba(138, 204, 122, 0.8)'
+        self.income_and_support_color = 'rgba(100, 141, 229, 1)'
+        self.income_and_support_color_translucent = 'rgba(100, 141, 229, 0.8)'
 
         # setup color palette
         self.category_color_dict = category_color_dict
@@ -153,10 +157,16 @@ class ReportGenerator:
 
             report_name = f'report_{key}.html'
             report_path = os.path.join(self.save_path, report_name)
+
+            if key != 'all':
+                title = f'Financial Report {key}'
+            else:
+                title = f'Financial Report<br><i>{self.min_year} - {self.max_year}</i>'
+
             self.__save_list_of_plotly_figs(
                 path=report_path,
                 fig_list=value,
-                title=f'Financial Report {key}'
+                title=title
             )
 
 
@@ -213,44 +223,48 @@ class ReportGenerator:
         income_total = round(sum(dataset_income['Amount']))
         expenses_total = round(sum(dataset_expenses['Amount']))
         profit = income_total - expenses_total
+        profit_perc = round((profit / income_total) * 100, 2)
 
         # determine the color and sign of the profit value
         if profit >= 0:
-            profit_str = f'<span style="color: {self.INCOME_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
         else:
-            profit_str = f'<span style="color: {self.EXPENSES_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
 
-        subtitle = f"<br><sup><br>Total Income: {income_total}€<br>Total Expenses: {expenses_total}€<br>Profit: {profit_str}</sup>"
+        subtitle = f"<br><sup><br>Total Income: <b>{income_total}€</b><br>Total Expenses: <b>{expenses_total}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sup>"
 
+
+        theta_with_amount = [f'<b>{category}</b><br>{amount}€' for category, amount in zip(list(dataset_income['Category']), list(dataset_income['Amount']))]
         fig.add_trace(
             go.Scatterpolar(
                 r=list(dataset_income['Amount']),
-                theta=list(dataset_income['Category']),
+                theta=theta_with_amount, #list(dataset_income['Category']),
                 mode='markers+text',
-                name='markers',
+                name='Income',
                 #text=list(dataset_income['Amount_label']),
                 #textposition='middle right',
                 fill='toself',
                 hoverinfo='r',
-                hovertemplate='Income by %{theta}: %{r} (€)',
-                line=dict(color=self.INCOME_COLOR)
+                hovertemplate='Income by %{theta}',
+                line=dict(color=self.income_color)
             ),
             row=1,
             col=1,
         )
 
+        theta_with_amount = [f'<b>{category}</b><br>{amount}€' for category, amount in zip(list(dataset_expenses['Category']), list(dataset_expenses['Amount']))]
         fig.add_trace(
             go.Scatterpolar(
                 r=list(dataset_expenses['Amount']),
-                theta=list(dataset_expenses['Category']),
+                theta=theta_with_amount, #list(dataset_expenses['Category']),
                 mode='markers+text',
-                name='markers',
+                name='Expenses',
                 #text=list(dataset_expenses['Amount_label']),
                 #textposition='middle right',
                 fill='toself',
                 hoverinfo='r',
-                hovertemplate='Expenses by %{theta}: %{r} (€)',
-                line=dict(color=self.EXPENSES_COLOR)
+                hovertemplate='Expenses by %{theta}',
+                line=dict(color=self.expenses_color)
             ),
             row=1,
             col=2,
@@ -263,7 +277,7 @@ class ReportGenerator:
                 ),
                 angularaxis=dict(
                     tickfont=dict(
-                        size=15
+                        size=12
                     )
                 )
             ),
@@ -273,7 +287,7 @@ class ReportGenerator:
                 ),
                 angularaxis=dict(
                     tickfont=dict(
-                        size=15
+                        size=12
                     )
                 )
             ),
@@ -351,7 +365,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income',
                 textposition='top center',
-                line=dict(color=self.INCOME_COLOR),
+                line=dict(color=self.income_color),
                 hovertemplate='Income of %{x}: %{y}€',
                 ))
 
@@ -364,7 +378,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income + Support',
                 textposition='top center',
-                line=dict(color=self.INCOME_AND_SUPPORT_COLOR),
+                line=dict(color=self.income_and_support_color),
                 hovertemplate='Income+Support of %{x}: %{y}€',
                 ))
 
@@ -377,7 +391,7 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color=self.EXPENSES_COLOR),
+                line=dict(color=self.expenses_color),
                 hovertemplate='Expenses of %{x}: %{y}€',
                 ))
 
@@ -387,7 +401,7 @@ class ReportGenerator:
                 x=income_df['Month'],
                 y=[income_mean]*len(income_df['Month']),
                 mode='lines',
-                line=dict(color=self.INCOME_COLOR, width=1.5, dash='dash'),
+                line=dict(color=self.income_color, width=1.5, dash='dash'),
                 name='Mean Income',
                 hovertemplate='Mean Income: %{y}€',
                 visible='legendonly'
@@ -400,7 +414,7 @@ class ReportGenerator:
                 x=income_and_support_df['Month'],
                 y=[income_support_mean]*len(income_and_support_df['Month']),
                 mode='lines',
-                line=dict(color=self.INCOME_AND_SUPPORT_COLOR, width=1.5, dash='dash'),
+                line=dict(color=self.income_and_support_color, width=1.5, dash='dash'),
                 name='Mean Income + Support',
                 hovertemplate='Mean Income+Support: %{y}€',
                 visible='legendonly'
@@ -413,7 +427,7 @@ class ReportGenerator:
                 x=expenses_df['Month'],
                 y=[expenses_mean]*len(expenses_df['Month']),
                 mode='lines',
-                line=dict(color=self.EXPENSES_COLOR, width=1.5, dash='dash'),
+                line=dict(color=self.expenses_color, width=1.5, dash='dash'),
                 name='Mean Expenses',
                 hovertemplate='Mean Expenses: %{y}€',
                 visible='legendonly'
@@ -496,8 +510,8 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income',
                 textposition='top center',
-                line=dict(color=self.INCOME_COLOR),
-                hovertemplate='Cumulative Income up to %{x}: %{y}€',
+                line=dict(color=self.income_color),
+                hovertemplate='Cumulative Income up to <b>%{x}</b>: %{y}€',
                 ))
 
         # Income + Support
@@ -509,8 +523,8 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income + Support',
                 textposition='top center',
-                line=dict(color=self.INCOME_AND_SUPPORT_COLOR),
-                hovertemplate='Cumulative Income+Support up to %{x}: %{y}€',
+                line=dict(color=self.income_and_support_color),
+                hovertemplate='Cumulative Income+Support up to <b>%{x}</b>: %{y}€',
                 ))
 
         # Expenses
@@ -522,8 +536,8 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color=self.EXPENSES_COLOR),
-                hovertemplate='Cumulative Expenses up to %{x}: %{y}€',
+                line=dict(color=self.expenses_color),
+                hovertemplate='Cumulative Expenses up to <b>%{x}</b>: %{y}€',
                 ))
 
         fig.update_layout(
@@ -581,7 +595,8 @@ class ReportGenerator:
 
         dataset = dataset.loc[dataset['Transaction Type'] == 'Reddito']
         dataset['Notes'] = dataset['Notes'].fillna('Non specificato')
-        dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes']
+        dataset['Amount_str'] = dataset['Amount'].astype(int).astype(str)
+        dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes'] + ' → ' + dataset['Amount_str'] + '€'
         dataset = dataset.groupby(['Month', 'Category']).agg({
             'Amount': 'sum',
             'Notes': lambda x: '\n<br>'.join(x)
@@ -601,8 +616,28 @@ class ReportGenerator:
 
         fig = go.Figure()
 
+
+        # Ensure every category has an entry for every month
+        months = list(set(dataset['Month']))
+
         for category, color in self.category_color_dict.items():
+
             df_category = dataset[dataset['Category'] == category]
+
+            # Ensure every category has an entry for every month
+            temp_months = list(df_category['Month'])
+            if not df_category.empty:
+                for month in months:
+                    if month not in temp_months:
+                        new_row = pd.DataFrame({
+                            'Month': [month],
+                            'Category': [category],
+                            'Amount': [0],
+                            'Notes': ['Nessuna Entrata']
+                        })
+                        df_category = pd.concat([df_category,new_row])
+                df_category = df_category.sort_values(['Month'], ascending=True)
+
             fig.add_trace(go.Scatter(
                 x=df_category['Month'],
                 y=df_category['Amount'],
@@ -613,7 +648,7 @@ class ReportGenerator:
                 text=df_category['Amount'],  # Text to display
                 textposition='top center',  # Position of the text
                 hovertext=df_category['Notes'],
-                hovertemplate='Total Income: %{y}€<br><br>%{hovertext}',
+                hovertemplate=f'<b>{category}</b>: ' + '%{y}€<br><br>%{hovertext}',
             ))
 
         # Add Expenses Line
@@ -625,8 +660,8 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Spese',
                 textposition='top center',
-                line=dict(color=self.EXPENSES_COLOR_TRANSLUCENT, dash='dot'),
-                hovertemplate='Total Expenses: %{y}€',
+                line=dict(color=self.expenses_color_translucent, dash='dot'),
+                hovertemplate='Total Expenses of <b>%{x}</b>: %{y}€',
                 ))
 
         fig.update_layout(
@@ -684,7 +719,9 @@ class ReportGenerator:
         dataset = dataset.copy()
         dataset = dataset.loc[dataset['Transaction Type'] == 'Spesa']
         dataset['Notes'] = dataset['Notes'].fillna('Non specificato')
-        dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes']
+        dataset['Amount_str'] = dataset['Amount'].astype(int).astype(str)
+        dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes'] + ' → ' + dataset['Amount_str'] + '€'
+        
         dataset = dataset.groupby(['Month', 'Category']).agg({
             'Amount': 'sum',
             'Notes': lambda x: '\n<br>'.join(x)
@@ -704,8 +741,27 @@ class ReportGenerator:
 
         fig = go.Figure()
 
+        # Ensure every category has an entry for every month
+        months = list(set(dataset['Month']))
+
         for category, color in self.category_color_dict.items():
+
             df_category = dataset[dataset['Category'] == category]
+
+            # Ensure every category has an entry for every month
+            temp_months = list(df_category['Month'])
+            if not df_category.empty:
+                for month in months:
+                    if month not in temp_months:
+                        new_row = pd.DataFrame({
+                            'Month': [month],
+                            'Category': [category],
+                            'Amount': [0],
+                            'Notes': ['Nessuna Spesa']
+                        })
+                        df_category = pd.concat([df_category,new_row])
+                df_category = df_category.sort_values(['Month'], ascending=True)
+
             fig.add_trace(go.Scatter(
                 x=df_category['Month'],
                 y=df_category['Amount'],
@@ -716,7 +772,7 @@ class ReportGenerator:
                 #text=df_category['Amount'],  # Text to display
                 #textposition='top center',  # Position of the text
                 hovertext=df_category['Notes'],
-                hovertemplate='Total Expenses: %{y}€<br><br>%{hovertext}',
+                hovertemplate=f'<b>{category}</b>: ' + '%{y}€<br><br>%{hovertext}',
             ))
 
         fig.update_layout(
@@ -748,7 +804,9 @@ class ReportGenerator:
         income_df = dataset.copy()
         income_df = income_df.loc[income_df['Transaction Type'] == 'Reddito']
         income_df['Notes'] = income_df['Notes'].fillna('Non specificato')
-        income_df['Notes'] = ' • ' + income_df['Date'] + ': ' + income_df['Notes']
+        income_df['Amount_str'] = income_df['Amount'].astype(int).astype(str)
+        income_df['Notes'] = ' • ' + income_df['Date'] + ': ' + income_df['Notes'] + ' → ' + income_df['Amount_str'] + '€'
+
         income_df = income_df.groupby(['Month', 'Category']).agg(
             {
                 'Amount': 'sum',
@@ -761,7 +819,8 @@ class ReportGenerator:
         expenses_df = dataset.copy()
         expenses_df = expenses_df.loc[expenses_df['Transaction Type'] == 'Spesa']
         expenses_df['Notes'] = expenses_df['Notes'].fillna('Non specificato')
-        expenses_df['Notes'] = ' • ' + expenses_df['Date'] + ': ' + expenses_df['Notes']
+        expenses_df['Amount_str'] = expenses_df['Amount'].astype(int).astype(str)
+        expenses_df['Notes'] = ' • ' + expenses_df['Date'] + ': ' + expenses_df['Notes'] + ' → ' + expenses_df['Amount_str'] + '€'
         expenses_df = expenses_df.groupby(['Month', 'Category']).agg(
             {
                 'Amount': 'sum',
@@ -798,9 +857,11 @@ class ReportGenerator:
                         colors=[self.category_color_dict[cat] for cat in df_month_income['Category']]
                         ),
                     textinfo='label+value',
+                    texttemplate='<b>%{label}</b><br>%{value}€',
                     hovertext=df_month_income['Notes'],
-                    hovertemplate='%{label}: %{value}€ <br><br>%{hovertext}',
+                    hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
                     automargin=False,
+                    opacity=1
                     #domain=dict(x=[0.45, 0.45], y=[0.45, 0.45]) # restricts the plot to the middle X% of the area
                 ), 1, 1
             )
@@ -818,9 +879,11 @@ class ReportGenerator:
                         colors=[self.category_color_dict[cat] for cat in df_month_expenses['Category']]
                         ),
                     textinfo='label+value',
+                    texttemplate='<b>%{label}</b> %{value}€',
                     hovertext=df_month_expenses['Notes'],
-                    hovertemplate='%{label}: %{value}€ <br><br>%{hovertext}',
+                    hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
                     automargin=False,
+                    opacity=1
                     #domain=dict(x=[0.45, 0.45], y=[0.45, 0.45]) # restricts the plot to the middle X% of the area
                 ), 1, 2
             )
@@ -839,14 +902,15 @@ class ReportGenerator:
             df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
             tot_expenses = int(round(sum(df_temp['Amount'])))
             profit = tot_income - tot_expenses
+            profit_perc = round((profit / tot_income) * 100, 2)
 
             # determine the color and sign of the profit value
             if profit >= 0:
-                profit_str = f'<span style="color: {self.INCOME_COLOR};">{profit}€</span>'
+                profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
             else:
-                profit_str = f'<span style="color: {self.EXPENSES_COLOR};">{profit}€</span>'
+                profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
 
-            subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€<br>Profit: {profit_str}</sup>"
+            subtitle = f"<br><sup><br>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: <b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sup>"
 
             step = dict(
                 method="update",
@@ -872,14 +936,15 @@ class ReportGenerator:
         df_temp = expenses_df[expenses_df['Month'] == expenses_months[0]]
         tot_expenses = int(round(sum(df_temp['Amount'])))
         profit = tot_income - tot_expenses
+        profit_perc = round((profit / tot_income) * 100, 2)
 
         # determine the color and sign of the profit value
         if profit >= 0:
-            profit_str = f'<span style="color: {self.INCOME_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
         else:
-            profit_str = f'<span style="color: {self.EXPENSES_COLOR};">{profit}€</span>'
+            profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
 
-        subtitle = f"<br><sup><br>Monthly Income: {tot_income}€<br>Monthly Expenses: {tot_expenses}€<br>Profit: {profit_str}</sup>"
+        subtitle = f"<br><sup><br>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: <b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sup>"
 
         # add title, width, legend, ...
         fig.update_layout(
@@ -905,13 +970,13 @@ class ReportGenerator:
 
     def __get_distant_colors(self, n_colors):
 
-        if n_colors <= 0 or n_colors > len(self.PALETTE_COLORS):
-            self.PALETTE_COLORS = self.PALETTE_COLORS + self.PALETTE_COLORS
+        if n_colors <= 0 or n_colors > len(self.palette_colors):
+            self.palette_colors = self.palette_colors + self.palette_colors
             return self.__get_distant_colors(n_colors)
 
-        step = len(self.PALETTE_COLORS) // (n_colors - 1)
+        step = len(self.palette_colors) // (n_colors - 1)
 
-        return [self.PALETTE_COLORS[min(i * step, len(self.PALETTE_COLORS)-1)] for i in range(n_colors)]
+        return [self.palette_colors[min(i * step, len(self.palette_colors)-1)] for i in range(n_colors)]
 
 
     def __save_list_of_plotly_figs(self, path, fig_list, title="My Report"):
@@ -943,6 +1008,7 @@ class ReportGenerator:
         try:
 
             icon_path = str(os.path.join(PACKAGE_DIR, '..', 'images', 'chart.svg'))
+            gif_path = str(os.path.join(PACKAGE_DIR, '..', 'images', 'finance-cards.webp'))
 
             with open(path, "w", encoding="utf-8") as output_file:
                 output_file.write(
@@ -950,7 +1016,7 @@ class ReportGenerator:
                     <!DOCTYPE html>
                     <html>
                     <head>
-                        <title>{title}</title>
+                        <title>{title.replace('<br><i>',' ').replace('</i>','')}</title>
                         <link rel="icon" type="image/svg" href="{icon_path}">
                         <style>
                             .centered {{
@@ -965,7 +1031,8 @@ class ReportGenerator:
                     </head>
                     <body>
                     <div class='centered'>
-                        <br><h1>{title}</h1><br>
+                        <br><h1>{title}</h1>
+                        <img src={gif_path} alt="Finance Cards" width="125">
                     """
                 )
 

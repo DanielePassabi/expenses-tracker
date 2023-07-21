@@ -1,6 +1,6 @@
 {
-    "app_csv_path": "data/raw/fleur_data.csv",
-    "save_path": "reports/fleur",
+    "app_csv_path": "data/raw/daniele/fleur_data.csv",
+    "save_path": "reports/daniele/fleur",
     "app_custom_dict": null,
     "category_color_dict": {
         "Supporto Famiglia":    "#7a9bcc",
