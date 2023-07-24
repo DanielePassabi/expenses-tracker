@@ -16,7 +16,9 @@ import pandas as pd
 AVAILABLE_PREPROCESSING_APPS = {
 
     # no operations needed for dummy
-    'dummy': {},
+    'dummy': {
+        'columns_to_drop': ['E'],
+    },
 
     'fleur': {
         'delete_rows': {

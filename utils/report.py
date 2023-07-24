@@ -3,10 +3,11 @@ Dataviz Utils
 """
 
 # Custom Pylint rules for the file
-# pylint: disable=W0718 C0301 E0402
+# pylint: disable=W0718 C0301 E0402 C0302
 # W0718:broad-exception-caught
 # C0301:line-too-long
 # E0402:relative-beyond-top-level
+# C0302:too-many-lines
 
 
 # Libraries
@@ -17,7 +18,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Custom functions
-from .preprocessing import preprocess_csv, AVAILABLE_PREPROCESSING_APPS
+from .preprocessing import preprocess_csv
+
+# Settings
+pd.set_option('mode.chained_assignment', None)
 
 
 # global variables
@@ -198,11 +202,6 @@ class ReportGenerator:
                 'Amount': 'sum'
             }).reset_index()
         dataset_income['Amount'] = round(dataset_income['Amount']).astype(int)
-        dataset_income['Amount_label'] = np.where(
-            dataset_income['Amount'] < 1000,
-            "",
-            round(dataset_income['Amount']).astype(str) + '€'
-            )
 
         dataset_expenses = dataset.copy()
         dataset_expenses = dataset_expenses.loc[dataset_expenses['Transaction Type'] == 'Spesa']
@@ -210,11 +209,6 @@ class ReportGenerator:
                 'Amount': 'sum'
             }).reset_index()
         dataset_expenses['Amount'] = round(dataset_expenses['Amount']).astype(int)
-        dataset_expenses['Amount_label'] = np.where(
-            dataset_expenses['Amount'] < 1000,
-            "",
-            round(dataset_expenses['Amount']).astype(str) + '€'
-            )
 
         #fig = go.Figure()
         fig = make_subplots(rows=1, cols=2, specs=[[{'type': 'polar'}] * 2] * 1)
@@ -241,8 +235,6 @@ class ReportGenerator:
                 theta=theta_with_amount, #list(dataset_income['Category']),
                 mode='markers+text',
                 name='Income',
-                #text=list(dataset_income['Amount_label']),
-                #textposition='middle right',
                 fill='toself',
                 hoverinfo='r',
                 hovertemplate='Income by %{theta}',
@@ -256,11 +248,9 @@ class ReportGenerator:
         fig.add_trace(
             go.Scatterpolar(
                 r=list(dataset_expenses['Amount']),
-                theta=theta_with_amount, #list(dataset_expenses['Category']),
+                theta=theta_with_amount,
                 mode='markers+text',
                 name='Expenses',
-                #text=list(dataset_expenses['Amount_label']),
-                #textposition='middle right',
                 fill='toself',
                 hoverinfo='r',
                 hovertemplate='Expenses by %{theta}',
@@ -447,6 +437,18 @@ class ReportGenerator:
             )
         )
 
+        months_list = sorted(list(set(dataset['Month'])))
+        fig.update_xaxes(
+            tickvals=months_list,  # list of all months
+            tickmode='array',      # use provided tick values as coordinates
+            tickformat="%b %Y"     # custom date format
+        )
+
+        if len(months_list) > 12:
+            fig.update_xaxes(
+                tickangle=-30,         # rotate labels
+            )
+
         return fig
 
 
@@ -553,6 +555,18 @@ class ReportGenerator:
             )
         )
 
+        months_list = sorted(list(set(dataset['Month'])))
+        fig.update_xaxes(
+            tickvals=months_list,  # list of all months
+            tickmode='array',      # use provided tick values as coordinates
+            tickformat="%b %Y"     # custom date format
+        )
+
+        if len(months_list) > 12:
+            fig.update_xaxes(
+                tickangle=-30,         # rotate labels
+            )
+
         return fig
 
 
@@ -591,12 +605,12 @@ class ReportGenerator:
 
         expenses_df = dataset.loc[dataset['Transaction Type'] == 'Spesa']
         expenses_df = expenses_df.groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
-        expenses_df['Amount_label'] = round(expenses_df['Amount']).astype(int).astype(str) + '€'
+        expenses_df['Amount_label'] = expenses_df['Amount'].astype(str) + '€'
 
         dataset = dataset.loc[dataset['Transaction Type'] == 'Reddito']
         dataset['Notes'] = dataset['Notes'].fillna('Non specificato')
-        dataset['Amount_str'] = dataset['Amount'].astype(int).astype(str)
-        dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes'] + ' → ' + dataset['Amount_str'] + '€'
+        dataset['Amount_label'] = dataset['Amount'].astype(str) + '€'
+        dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes'] + ' → ' + dataset['Amount_label']
         dataset = dataset.groupby(['Month', 'Category']).agg({
             'Amount': 'sum',
             'Notes': lambda x: '\n<br>'.join(x)
@@ -638,6 +652,9 @@ class ReportGenerator:
                         df_category = pd.concat([df_category,new_row])
                 df_category = df_category.sort_values(['Month'], ascending=True)
 
+            # Do not display the value of "Amount" if it is 0
+            text = [f"{int(round(amount))}" if amount > 1 else "" for amount in df_category['Amount']]
+
             fig.add_trace(go.Scatter(
                 x=df_category['Month'],
                 y=df_category['Amount'],
@@ -645,8 +662,8 @@ class ReportGenerator:
                 line=dict(width=0.5, color=color),
                 stackgroup='one',
                 name=category,
-                text=df_category['Amount'],  # Text to display
-                textposition='top center',  # Position of the text
+                text=text,
+                textposition='top center',
                 hovertext=df_category['Notes'],
                 hovertemplate=f'<b>{category}</b>: ' + '%{y}€<br><br>%{hovertext}',
             ))
@@ -679,6 +696,18 @@ class ReportGenerator:
 
         # update the x-axis range with the padding
         fig.update_xaxes(range=[min_date, max_date])
+
+        months_list = sorted(list(set(dataset['Month'])))
+        fig.update_xaxes(
+            tickvals=months_list,  # list of all months
+            tickmode='array',      # use provided tick values as coordinates
+            tickformat="%b %Y"     # custom date format
+        )
+
+        if len(months_list) > 12:
+            fig.update_xaxes(
+                tickangle=-30,         # rotate labels
+            )
 
         return fig
 
@@ -719,7 +748,7 @@ class ReportGenerator:
         dataset = dataset.copy()
         dataset = dataset.loc[dataset['Transaction Type'] == 'Spesa']
         dataset['Notes'] = dataset['Notes'].fillna('Non specificato')
-        dataset['Amount_str'] = dataset['Amount'].astype(int).astype(str)
+        dataset['Amount_str'] = dataset['Amount'].astype(str)
         dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes'] + ' → ' + dataset['Amount_str'] + '€'
         
         dataset = dataset.groupby(['Month', 'Category']).agg({
@@ -769,8 +798,6 @@ class ReportGenerator:
                 line=dict(width=0.5, color=color),
                 stackgroup='one',
                 name=category,
-                #text=df_category['Amount'],  # Text to display
-                #textposition='top center',  # Position of the text
                 hovertext=df_category['Notes'],
                 hovertemplate=f'<b>{category}</b>: ' + '%{y}€<br><br>%{hovertext}',
             ))
@@ -791,6 +818,18 @@ class ReportGenerator:
         # update the x-axis range with the padding
         fig.update_xaxes(range=[min_date, max_date])
 
+        months_list = sorted(list(set(dataset['Month'])))
+        fig.update_xaxes(
+            tickvals=months_list,  # list of all months
+            tickmode='array',      # use provided tick values as coordinates
+            tickformat="%b %Y"     # custom date format
+        )
+
+        if len(months_list) > 12:
+            fig.update_xaxes(
+                tickangle=-30,         # rotate labels
+            )
+
         return fig
 
 
@@ -804,7 +843,7 @@ class ReportGenerator:
         income_df = dataset.copy()
         income_df = income_df.loc[income_df['Transaction Type'] == 'Reddito']
         income_df['Notes'] = income_df['Notes'].fillna('Non specificato')
-        income_df['Amount_str'] = income_df['Amount'].astype(int).astype(str)
+        income_df['Amount_str'] = income_df['Amount'].astype(str)
         income_df['Notes'] = ' • ' + income_df['Date'] + ': ' + income_df['Notes'] + ' → ' + income_df['Amount_str'] + '€'
 
         income_df = income_df.groupby(['Month', 'Category']).agg(
@@ -819,7 +858,7 @@ class ReportGenerator:
         expenses_df = dataset.copy()
         expenses_df = expenses_df.loc[expenses_df['Transaction Type'] == 'Spesa']
         expenses_df['Notes'] = expenses_df['Notes'].fillna('Non specificato')
-        expenses_df['Amount_str'] = expenses_df['Amount'].astype(int).astype(str)
+        expenses_df['Amount_str'] = expenses_df['Amount'].astype(str)
         expenses_df['Notes'] = ' • ' + expenses_df['Date'] + ': ' + expenses_df['Notes'] + ' → ' + expenses_df['Amount_str'] + '€'
         expenses_df = expenses_df.groupby(['Month', 'Category']).agg(
             {
@@ -912,10 +951,11 @@ class ReportGenerator:
 
             subtitle = f"<br><sup><br>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: <b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sup>"
 
+            custom_label = pd.to_datetime(expenses_months[i]).strftime("%b %Y")
             step = dict(
                 method="update",
                 args=[{"visible": [False] * len(fig.data)}, {"title": f"Income and Expenses by Month{subtitle}"}],  # layout attribute
-                label=expenses_months[i], # set the name of each month
+                label=custom_label, # set the name of each month
             )
             idx_1 = 2*i
             idx_2 = 2*i + 1
