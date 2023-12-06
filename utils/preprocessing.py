@@ -11,7 +11,10 @@ Available Preprocessing Apps
 
 
 # Libraries
+import os
+from io import StringIO
 import pandas as pd
+
 
 AVAILABLE_PREPROCESSING_APPS = {
 
@@ -21,10 +24,6 @@ AVAILABLE_PREPROCESSING_APPS = {
     },
 
     'fleur': {
-        'delete_rows': {
-            'start': 0,
-            'end': -1
-        },
         'columns_to_drop': ['E'],
     },
 
@@ -55,6 +54,8 @@ AVAILABLE_PREPROCESSING_APPS = {
 }
 
 
+# MAIN FUNCTIONS
+
 def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
     """
     Import a CSV file and perform some preprocessing operations based on the specified application. 
@@ -74,12 +75,103 @@ def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
         Otherwise, returns None.
     """
 
-    # * GENERAL *
+    # * EXPENSES *
 
-    # 1. import original dataset
-    dataset = pd.read_csv(csv_path, on_bad_lines='warn')
+    # 1. Import
 
-    # * APPLY CUSTOM RULES *
+    # Fleur custom check (double dataset)
+    csv_transfers_path = None
+    if app == 'fleur':
+        csv_expenses_path, csv_transfers_path = _split_fleur_csv(csv_path)
+    else:
+        csv_expenses_path = csv_path
+
+    # Import expenses dataset
+    dataset_expenses = pd.read_csv(csv_expenses_path, on_bad_lines='warn')
+
+    # 2. Custom Preprocessing
+    dataset_expenses = _apply_custom_preprocessing(
+        dataset=dataset_expenses,
+        app=app,
+        app_custom_dict=app_custom_dict
+        )
+
+    # 3. General Preprocessing
+    dataset_expenses = _apply_general_preprocessing(
+        dataset=dataset_expenses
+        )
+
+    # 4. Save Datasets by Year
+    available_years = dataset_expenses['Year'].unique().tolist()
+    print(f'Found {len(available_years)} years: {available_years}')
+
+    datasets_expenses_list = []
+    for year in available_years:
+        temp_df = dataset_expenses.loc[dataset_expenses['Year'] == year].reset_index(drop=True)
+        datasets_expenses_list.append(temp_df)
+
+    # * TRANSFERS *
+
+    # 1. Import
+    if csv_transfers_path is not None:
+        dataset_transfers = pd.read_csv(csv_transfers_path, on_bad_lines='warn')
+
+        # 2. General Preprocessing
+        dataset_transfers = _apply_general_preprocessing(
+            dataset=dataset_transfers
+            )
+
+        # 3. Save Datasets by Year
+        datasets_transfers_list = []
+        for year in available_years:
+            temp_df = dataset_transfers.loc[dataset_transfers['Year'] == year].reset_index(drop=True)
+            datasets_transfers_list.append(temp_df)
+    else:
+        datasets_transfers_list = []
+
+    # * SAVE *
+    # create dataframe dict
+    datasets_dict = {
+        'expenses': datasets_expenses_list,
+        'transfers': datasets_transfers_list
+    }
+    return datasets_dict
+
+
+# SUPPORT FUNCTIONS
+
+def _split_fleur_csv(csv_path):
+    """
+    The Fleur .csv has 2 datasets inside
+    This functions splits them and saves them separately.
+    """
+    # Read the entire file
+    with open(csv_path, 'r', encoding='utf-8') as file:
+        data = file.read()
+
+    # Split the data where the row is empty
+    datasets = data.split('\n\n\n\n')
+
+    # Read each dataset into a DataFrame
+    dfs = [pd.read_csv(StringIO(ds)) for ds in datasets]
+
+    # Simple preprocessing
+    dfs[1]['Date'] = pd.to_datetime(dfs[1]['Date'], format='%Y%m%d')
+    dfs[1]['Date'] = dfs[1]['Date'].dt.strftime('%Y/%m/%d')
+
+    # Get the directory of the original CSV file
+    dir_path = os.path.dirname(csv_path)
+
+    # Save each DataFrame to a new CSV file
+    fleur_expenses_path = os.path.join(dir_path, 'fleur_expenses.csv')
+    fleur_transfers_path = os.path.join(dir_path, 'fleur_transfers.csv')
+    dfs[0].to_csv(fleur_expenses_path, index=False)
+    dfs[1].to_csv(fleur_transfers_path, index=False)
+
+    return fleur_expenses_path, fleur_transfers_path
+
+
+def _apply_custom_preprocessing(dataset, app, app_custom_dict):
 
     if app in AVAILABLE_PREPROCESSING_APPS:
         print(f"Starting preprocessing for app '{app}'")
@@ -119,14 +211,17 @@ def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
     if 'date_format' in settings:
         dataset["Date"] = pd.to_datetime(dataset["Date"], format=settings['date_format'])
 
-    # * GENERAL *
+    return dataset
 
-    # 2. add information about year and month
+
+def _apply_general_preprocessing(dataset):
+
+    # 1. add information about year and month
     dataset["Date"] = pd.to_datetime(dataset["Date"])
     dataset["Year"] = dataset["Date"].dt.year
     dataset["Month"] = dataset["Date"].dt.to_period('M')
 
-    # 3. convert column based on type
+    # 2. convert column based on type
 
     # str for dates, months, ...
     dataset["Date"] = dataset["Date"].astype(str)
@@ -135,13 +230,4 @@ def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
     # numeric for 'Amount' and 'E'
     dataset['Amount'] = pd.to_numeric(dataset['Amount'], errors='coerce')
 
-    # 4. display info on founded years in data
-    available_years = dataset['Year'].unique().tolist()
-    print(f'Found {len(available_years)} years: {available_years}')
-
-    # 5. save all years datasets in a list and return it
-    datasets_list = []
-    for year in available_years:
-        temp_df = dataset.loc[dataset['Year'] == year].reset_index(drop=True)
-        datasets_list.append(temp_df)
-    return datasets_list
+    return dataset

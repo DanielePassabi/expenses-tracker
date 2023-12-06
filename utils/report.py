@@ -14,6 +14,7 @@ Dataviz Utils
 import os
 import numpy as np
 import pandas as pd
+from datetime import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -41,67 +42,20 @@ class ReportGenerator:
         category_color_dict=None
         ):
 
-        self.datasets = {}
+        # instantiate class variables
+        self.datasets_expenses = {}
+        self.datasets_transfers = {}
         self.report_generators = {}
         self.reports = {}
+        self.palette_colors = None
         self.save_path = save_path
 
-        # store available dataset (with 'Year' as key)
-        available_datasets = preprocess_csv(csv_path, app=app, app_custom_dict=app_custom_dict)
-        self.datasets['all'] = pd.concat(available_datasets)
-        self.reports['all'] = []
-        for dataset in available_datasets:
-            year = str(dataset['Year'].iloc[0])
-            self.datasets[year] = dataset
-            self.reports[year] = []
-
-        years = sorted(self.datasets.keys())
-        self.min_year = years[0]
-        self.max_year = years[-2]
+        # handle datasets
+        data_dict = preprocess_csv(csv_path, app=app, app_custom_dict=app_custom_dict)
+        self.__handle_datasets(data_dict)
 
         # handle colors
-        self.palette_colors = [
-            'rgba(241, 243, 206, 0.8)',
-            'rgba(245, 228, 102, 0.8)',
-            'rgba(242, 206, 203, 0.8)',
-            'rgba(224, 168, 144, 0.8)',
-            'rgba(140,  57,  57, 0.8)',
-            'rgba(232, 156, 232, 0.8)',
-            'rgba(194, 133, 255, 0.8)',
-            'rgba(147, 129, 255, 0.8)',
-            'rgba(208, 254, 245, 0.8)',
-            'rgba(129, 210, 199, 0.8)',
-            'rgba( 73, 202, 253, 0.8)',
-            'rgba(100, 141, 229, 0.8)',
-            'rgba(140, 160, 215, 0.8)',
-            'rgba( 65, 103, 136, 0.8)',
-            'rgba(237, 235, 242, 0.8)'
-        ]
-
-        self.expenses_color = 'rgba(204, 122, 171, 1)'
-        self.expenses_color_translucent = 'rgba(204, 122, 171, 0.8)'
-        self.income_color = 'rgba(138, 204, 122, 1)'
-        self.income_color_translucent = 'rgba(138, 204, 122, 0.8)'
-        self.income_and_support_color = 'rgba(100, 141, 229, 1)'
-        self.income_and_support_color_translucent = 'rgba(100, 141, 229, 0.8)'
-
-        # setup color palette
-        self.category_color_dict = category_color_dict
-        if self.category_color_dict is None:
-            self.category_color_dict = {}
-
-        # find categories with no color assigned
-        unique_categories = self.__get_unique_categories()
-        already_assigned_categories = set(self.category_color_dict.keys())
-        unique_categories = sorted(list(unique_categories - already_assigned_categories))
-
-        # obtain colors and assign them
-        colors_to_assign = self.__get_distant_colors(n_colors=len(unique_categories))
-        for idx,category in enumerate(unique_categories):
-            self.category_color_dict[category] = colors_to_assign[idx]
-
-        # finally, sort the dict by key (for better datavizs)
-        self.category_color_dict = dict(sorted(self.category_color_dict.items()))
+        self.__handle_colors(category_color_dict)
 
         # create save path
         if not os.path.exists(save_path):
@@ -117,7 +71,7 @@ class ReportGenerator:
         """
 
         # for each year
-        for key,value in self.datasets.items():
+        for key,value in self.datasets_expenses.items():
 
             # * YEARLY SPIDERPLOT *
             # Spyderplot of Yearly Total Income and Expenses
@@ -152,6 +106,13 @@ class ReportGenerator:
 
             # * INCOME AND EXPENSES BY MONTH *
             plot = self.plot_income_and_expenses_by_month(dataset=value)
+            self.reports[key].append(plot)
+            if show_plots:
+                plot.show()
+
+        # for each year
+        for key,value in self.datasets_transfers.items():
+            plot = self.plot_barplot_transfers(dataset=value)
             self.reports[key].append(plot)
             if show_plots:
                 plot.show()
@@ -315,7 +276,7 @@ class ReportGenerator:
 
         Notes
         -----
-        The function uses the self.category_color_dict constant which should be a dictionary
+        The function uses the self.category_color_dict_expenses constant which should be a dictionary
         mapping each category to a specific color in hexadecimal form.
         """
 
@@ -477,7 +438,7 @@ class ReportGenerator:
 
         Notes
         -----
-        The function uses the self.category_color_dict constant which should be a dictionary
+        The function uses the self.category_color_dict_expenses constant which should be a dictionary
         mapping each category to a specific color in hexadecimal form.
         """
 
@@ -634,7 +595,7 @@ class ReportGenerator:
         # Ensure every category has an entry for every month
         months = list(set(dataset['Month']))
 
-        for category, color in self.category_color_dict.items():
+        for category, color in self.category_color_dict_expenses.items():
 
             df_category = dataset[dataset['Category'] == category]
 
@@ -653,7 +614,7 @@ class ReportGenerator:
                 df_category = df_category.sort_values(['Month'], ascending=True)
 
             # Do not display the value of "Amount" if it is 0
-            text = [f"{int(round(amount))}" if amount > 1 else "" for amount in df_category['Amount']]
+            text = [f"{int(round(amount))}" if amount > 100 else "" for amount in df_category['Amount']]
 
             fig.add_trace(go.Scatter(
                 x=df_category['Month'],
@@ -741,7 +702,7 @@ class ReportGenerator:
 
         Notes
         -----
-        The function uses the self.category_color_dict constant which should be a dictionary
+        The function uses the self.category_color_dict_expenses constant which should be a dictionary
         mapping each category to a specific color in hexadecimal form.
         """
 
@@ -773,7 +734,7 @@ class ReportGenerator:
         # Ensure every category has an entry for every month
         months = list(set(dataset['Month']))
 
-        for category, color in self.category_color_dict.items():
+        for category, color in self.category_color_dict_expenses.items():
 
             df_category = dataset[dataset['Category'] == category]
 
@@ -893,7 +854,7 @@ class ReportGenerator:
                     name=month,
                     hole=0.4,
                     marker=dict(
-                        colors=[self.category_color_dict[cat] for cat in df_month_income['Category']]
+                        colors=[self.category_color_dict_expenses[cat] for cat in df_month_income['Category']]
                         ),
                     textinfo='label+value',
                     texttemplate='<b>%{label}</b><br>%{value}€',
@@ -915,7 +876,7 @@ class ReportGenerator:
                     name=month,
                     hole=0.4,
                     marker=dict(
-                        colors=[self.category_color_dict[cat] for cat in df_month_expenses['Category']]
+                        colors=[self.category_color_dict_expenses[cat] for cat in df_month_expenses['Category']]
                         ),
                     textinfo='label+value',
                     texttemplate='<b>%{label}</b> %{value}€',
@@ -998,13 +959,193 @@ class ReportGenerator:
         return fig
 
 
+    def plot_barplot_transfers(self, dataset):
+        """
+        TODO: update
+        """
+
+        # Convert 'Month' to datetime
+        dataset['Month'] = pd.to_datetime(dataset['Month'])
+
+        # Fix notes
+        dataset['Notes'] = dataset['Notes'].fillna('-')
+
+        # Create a bar plot using Graph Objects
+        fig = go.Figure()
+
+        # Define a consistent text font size
+        text_font_size = 12  # You can adjust this size as needed
+
+        # Calculate total transfers for each 'To' category
+        total_transfers = dataset.groupby('To')['Amount'].sum()
+
+        # Subtitle text with total transfers
+        subtitle_text = '<br><sup><br><b>Total Transfers</b><br>' + ', '.join([f'{to}: {amount:.2f} €' for to, amount in total_transfers.items()]) + '</sup>'
+
+        # Add bars for each 'To' category
+        categories = dataset['To'].unique()
+        for category in categories:
+            filtered_dataset = dataset[dataset['To'] == category]
+            fig.add_trace(go.Bar(
+                x=filtered_dataset['Month'],
+                y=filtered_dataset['Amount'],
+                name=f"<i>{category}</i><br>Total: {total_transfers[category]:.2f} €",  # Update legend name with total
+                text=filtered_dataset['Amount'],
+                textposition='inside',
+                textfont=dict(size=text_font_size),
+                hovertemplate="<b>Date:</b> %{x|%Y-%m}<br>" +
+                            "<b>From:</b> %{customdata[0]}<br>" +
+                            "<b>To:</b> %{customdata[1]}<br>" +
+                            "<b>Amount:</b> %{y} €<br>" +
+                            "<b>Notes:</b> %{customdata[2]}<extra></extra>",
+                customdata=filtered_dataset[['From', 'To', 'Notes']].values,
+                marker=dict(color=self.category_color_dict_transfers[category])  # Set custom color for each category
+            ))
+
+        # Customize the layout
+        fig.update_layout(
+            title=f'Money Transfers from Primary Account{subtitle_text}',
+            xaxis_title='Date',
+            yaxis_title='Amount (€)',
+            barmode='stack',
+            margin=dict(t=160),
+            width=1980,
+            height=800,
+            legend=dict(
+                orientation="v",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+
+        # Setup ticks
+        year = dataset['Month'].min().year
+        months_list = [datetime(year, month, 1).strftime('%Y-%m') for month in range(1, 13)]
+        fig.update_xaxes(
+            tickvals=months_list,  # list of all months
+            tickmode='array',      # use provided tick values as coordinates
+            tickformat="%b %Y"     # custom date format
+        )
+
+        if len(months_list) > 12:
+            fig.update_xaxes(
+                tickangle=-30,         # rotate labels
+            )
+
+        return fig
+
+
     # UTILITY FUNCTIONS
 
-    def __get_unique_categories(self):
+    def __handle_datasets(self, data_dict):
 
-        list_of_datasets = [dataset for dataset in self.datasets.values()]
+        available_expenses_datasets = data_dict['expenses']
+        self.datasets_expenses['all'] = pd.concat(available_expenses_datasets)
+
+        available_transfers_datasets = data_dict['transfers']
+        self.datasets_transfers['all'] = pd.concat(available_transfers_datasets)
+
+        self.reports['all'] = []
+        for dataset in available_expenses_datasets:
+            if not dataset.empty:
+                year = str(dataset['Year'].iloc[0])
+                self.datasets_expenses[year] = dataset
+                self.reports[year] = []
+
+        for dataset in available_transfers_datasets:
+            if not dataset.empty:
+                year = str(dataset['Year'].iloc[0])
+                self.datasets_transfers[year] = dataset
+
+        years = sorted(self.datasets_expenses.keys())
+        self.min_year = years[0]
+        self.max_year = years[-2]
+
+
+    def __handle_colors(self, category_color_dict):
+
+        # * General Logic *
+
+        # setup allowed colors and fixed colors
+        self.palette_colors = [
+            'rgba(241, 243, 206, 0.8)',
+            'rgba(245, 228, 102, 0.8)',
+            'rgba(242, 206, 203, 0.8)',
+            'rgba(224, 168, 144, 0.8)',
+            'rgba(140,  57,  57, 0.8)',
+            'rgba(232, 156, 232, 0.8)',
+            'rgba(194, 133, 255, 0.8)',
+            'rgba(147, 129, 255, 0.8)',
+            'rgba(208, 254, 245, 0.8)',
+            'rgba(129, 210, 199, 0.8)',
+            'rgba( 73, 202, 253, 0.8)',
+            'rgba(100, 141, 229, 0.8)',
+            'rgba(140, 160, 215, 0.8)',
+            'rgba( 65, 103, 136, 0.8)',
+            'rgba(237, 235, 242, 0.8)'
+        ]
+
+        self.expenses_color = 'rgba(204, 122, 171, 1)'
+        self.expenses_color_translucent = 'rgba(204, 122, 171, 0.8)'
+        self.income_color = 'rgba(138, 204, 122, 1)'
+        self.income_color_translucent = 'rgba(138, 204, 122, 0.8)'
+        self.income_and_support_color = 'rgba(100, 141, 229, 1)'
+        self.income_and_support_color_translucent = 'rgba(100, 141, 229, 0.8)'
+
+        # * Expenses Logic *
+
+        # setup color palette
+        self.category_color_dict_expenses = category_color_dict
+        if self.category_color_dict_expenses is None:
+            self.category_color_dict_expenses = {}
+
+        # find categories with no color assigned
+        unique_categories_expenses = self.__get_unique_categories_expenses()
+        already_assigned_categories = set(self.category_color_dict_expenses.keys())
+        unique_categories_expenses = sorted(list(unique_categories_expenses - already_assigned_categories))
+
+        # obtain colors and assign them
+        colors_to_assign_expenses = self.__get_distant_colors(n_colors=len(unique_categories_expenses))
+        for idx,category in enumerate(unique_categories_expenses):
+            self.category_color_dict_expenses[category] = colors_to_assign_expenses[idx]
+
+        # finally, sort the dict by key (for better datavizs)
+        self.category_color_dict_expenses = dict(sorted(self.category_color_dict_expenses.items()))
+
+        # * Transfers Logic *
+
+        # setup color palette
+        self.category_color_dict_transfers = {}
+
+        # find categories with no color assigned
+        unique_categories_transfers = self.__get_unique_categories_transfers()
+        already_assigned_categories = set(self.category_color_dict_transfers.keys())
+        unique_categories_transfers = sorted(list(unique_categories_transfers - already_assigned_categories))
+
+        # obtain colors and assign them
+        colors_to_assign_transfers = self.__get_distant_colors(n_colors=len(unique_categories_transfers))
+        for idx,category in enumerate(unique_categories_transfers):
+            self.category_color_dict_transfers[category] = colors_to_assign_transfers[idx]
+
+        # finally, sort the dict by key (for better datavizs)
+        self.category_color_dict_transfers = dict(sorted(self.category_color_dict_transfers.items()))
+
+
+    def __get_unique_categories_expenses(self):
+
+        list_of_datasets = [dataset for dataset in self.datasets_expenses.values()]
         complete_dataset = pd.concat(list_of_datasets)
         unique_categories = set(complete_dataset['Category'].unique())
+        return unique_categories
+
+
+    def __get_unique_categories_transfers(self):
+
+        list_of_datasets = [dataset for dataset in self.datasets_transfers.values()]
+        complete_dataset = pd.concat(list_of_datasets)
+        unique_categories = set(complete_dataset['To'].unique())
         return unique_categories
 
 
@@ -1013,6 +1154,9 @@ class ReportGenerator:
         if n_colors <= 0 or n_colors > len(self.palette_colors):
             self.palette_colors = self.palette_colors + self.palette_colors
             return self.__get_distant_colors(n_colors)
+
+        if n_colors == 1:
+            return [self.palette_colors[5]]
 
         step = len(self.palette_colors) // (n_colors - 1)
 
