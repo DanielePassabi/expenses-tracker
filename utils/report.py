@@ -80,8 +80,21 @@ class ReportGenerator:
             if show_plots:
                 plot.show()
 
+            # * YEARLY TREEMAP *
+            # Spyderplot of Yearly Total Income and Expenses
+            plot = self.plot_yearly_treemap(dataset=value)
+            self.reports[key].append(plot)
+            if show_plots:
+                plot.show()
+
             # * LINEPLOT OF INCOME AND EXPENSES *
             plot = self.plot_lineplot_income_and_expenses(dataset=value)
+            self.reports[key].append(plot)
+            if show_plots:
+                plot.show()
+
+            # * DELTA *
+            plot = self.plot_monthly_delta(dataset=value)
             self.reports[key].append(plot)
             if show_plots:
                 plot.show()
@@ -143,12 +156,12 @@ class ReportGenerator:
         Generate a Plotly figure representing yearly income, grouped by category, as a spyder plot.
 
         This function preprocesses the input DataFrame to extract income-relevant data.
-        It then generates a spyder (radar) plot, showing the total amount of income for each category. 
+        It then generates a spyder (radar) plot, showing the total amount of income for each category.
 
         Parameters
         ----------
         dataset : pd.DataFrame
-            The input DataFrame containing financial transaction data. 
+            The input DataFrame containing financial transaction data.
             It should include the following columns: 'Transaction Type', 'Category', 'Amount'.
 
         Returns
@@ -251,6 +264,88 @@ class ReportGenerator:
         return fig
 
 
+    def plot_yearly_treemap(self, dataset):
+        """
+        Generate Plotly figures representing yearly income and expenses, grouped by category, as treemaps.
+
+        Parameters
+        ----------
+        dataset : pd.DataFrame
+            The input DataFrame containing financial transaction data.
+            It should include the following columns: 'Transaction Type', 'Category', 'Amount'.
+
+        Returns
+        -------
+        plotly.graph_objs._figure.Figure
+            A Plotly figure representing the yearly income and expenses by category in treemaps.
+        """
+
+        # Income
+        dataset_income = dataset.loc[dataset['Transaction Type'] == 'Reddito']
+        dataset_income['Notes'] = dataset_income['Notes'].fillna('Non specificato')
+        dataset_income['Amount_label'] = dataset_income['Amount'].astype(str) + '€'
+        dataset_income['Notes'] = ' • ' + dataset_income['Date'] + ': ' + dataset_income['Notes'] + ' → ' + dataset_income['Amount_label']
+        dataset_income = dataset_income.groupby(['Category']).agg({
+            'Amount': 'sum',
+            'Notes': lambda x: '\n<br>'.join(x)
+        }).reset_index()
+        dataset_income['Amount'] = round(dataset_income['Amount']).astype(int)
+
+        # Expenses
+        dataset_expenses = dataset.loc[dataset['Transaction Type'] == 'Spesa']
+        dataset_expenses['Notes'] = dataset_expenses['Notes'].fillna('Non specificato')
+        dataset_expenses['Amount_label'] = dataset_expenses['Amount'].astype(str) + '€'
+        dataset_expenses['Notes'] = ' • ' + dataset_expenses['Date'] + ': ' + dataset_expenses['Notes'] + ' → ' + dataset_expenses['Amount_label']
+        dataset_expenses = dataset_expenses.groupby(['Category']).agg({
+            'Amount': 'sum',
+            'Notes': lambda x: '\n<br>'.join(x)
+        }).reset_index()
+        dataset_expenses['Amount'] = round(dataset_expenses['Amount']).astype(int)
+
+        # Function to get colors for categories
+        def get_colors(data):
+            return [self.category_color_dict_expenses.get(category, '#FFFFFF') for category in data['Category']]
+
+        # Create figures for income and expenses treemap
+        fig_income = go.Figure(go.Treemap(
+            labels=dataset_income['Category'],
+            parents=[""] * len(dataset_income),
+            values=dataset_income['Amount'],
+            textinfo='label+text',
+            texttemplate="<b>%{label}</b><br>%{value} €",
+            textposition='middle center',
+            marker_colors=get_colors(dataset_income),  # Set colors
+            domain={'x': [0, 0.48], 'y': [0, 1]},  # Set domain for left side
+            hoverinfo='none'  # Disable hover effect
+        ))
+
+        fig_expenses = go.Figure(go.Treemap(
+            labels=dataset_expenses['Category'],
+            parents=[""] * len(dataset_expenses),
+            values=dataset_expenses['Amount'],
+            textinfo='label+text',
+            texttemplate="<b>%{label}</b><br>%{value} €",
+            textposition='middle center',
+            marker_colors=get_colors(dataset_expenses),  # Set colors
+            domain={'x': [0.52, 1], 'y': [0, 1]},  # Set domain for right side
+            hoverinfo='none'  # Disable hover effect
+        ))
+
+        # Create a single figure to display both treemaps side by side
+        fig = go.Figure(data=[fig_income.data[0], fig_expenses.data[0]])
+
+        # Update layout
+        fig.update_layout(
+            title='',
+            grid= {'columns': 2, 'rows': 1},
+            width=1980,
+            height=600,
+            margin=dict(t=0)
+        )
+
+        return fig
+
+
     def plot_lineplot_income_and_expenses(self, dataset):
         """
         Generate a plotly figure showing monthly income, income+support and expenses.
@@ -261,7 +356,7 @@ class ReportGenerator:
         Parameters
         ----------
         dataset : DataFrame
-            The dataset that contains the transactions. Expected columns are 
+            The dataset that contains the transactions. Expected columns are
             - 'Transaction Type'
             - 'Category'
             - 'Amount'
@@ -413,11 +508,140 @@ class ReportGenerator:
         return fig
 
 
+    def plot_monthly_delta(self, dataset):
+        """
+        Generate a plotly figure showing the monthly delta between income (or income+support) and expenses.
+
+        Parameters
+        ----------
+        dataset : DataFrame
+            The dataset that contains the transactions. Expected columns are
+            - 'Transaction Type'
+            - 'Category'
+            - 'Amount'
+            - 'Month'
+
+        Returns
+        -------
+        fig : plotly.graph_objs._figure.Figure
+            A plotly figure containing the generated bar plot.
+        """
+
+        # Prepare data
+        income_df = dataset.loc[
+            (dataset['Transaction Type'] == 'Reddito') & (dataset['Category'] != 'Supporto Famiglia')
+        ]
+        income_df = income_df.groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
+
+        income_and_support_df = dataset.loc[(dataset['Transaction Type'] == 'Reddito')]
+        income_and_support_df = income_and_support_df.groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
+
+        expenses_df = dataset.loc[dataset['Transaction Type'] == 'Spesa']
+        expenses_df = expenses_df.groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
+
+        # Calculate deltas
+        delta_income = income_df['Amount'] - expenses_df['Amount'].reindex_like(income_df, method='ffill')
+        delta_income_support = income_and_support_df['Amount'] - expenses_df['Amount'].reindex_like(income_and_support_df, method='ffill')
+
+        # Moving Average Calculation
+        window_size = 3  # You can adjust this window size
+        income_df['Moving_Avg'] = delta_income.rolling(window=window_size).mean()
+        income_and_support_df['Moving_Avg'] = delta_income_support.rolling(window=window_size).mean()
+
+        # Define function to determine text color based on value
+        def get_text_color(values):
+            return ['green' if v >= 0 else 'red' for v in values]
+
+        # Create plot
+        fig = go.Figure()
+
+        # Delta relative to Income
+        fig.add_trace(
+            go.Bar(
+                x=income_df['Month'],
+                y=delta_income,
+                text=delta_income.apply(lambda x: f"{x:,.0f}€"),
+                textposition='outside',
+                marker_color=self.income_color,
+                name='Delta (Income)',
+                insidetextfont=dict(color=get_text_color(delta_income)),
+                outsidetextfont=dict(color=get_text_color(delta_income))
+            )
+        )
+
+        # Delta relative to Income + Support
+        fig.add_trace(
+            go.Bar(
+                x=income_and_support_df['Month'],
+                y=delta_income_support,
+                text=delta_income_support.apply(lambda x: f"{x:,.0f}€"),
+                textposition='outside',
+                marker_color=self.income_and_support_color,
+                name='Delta (Income + Support)',
+                insidetextfont=dict(color=get_text_color(delta_income_support)),
+                outsidetextfont=dict(color=get_text_color(delta_income_support))
+            )
+        )
+
+        # # Adding Moving Average Trend Line for Income
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=income_df['Month'],
+        #         y=income_df['Moving_Avg'],
+        #         mode='lines',
+        #         line=dict(color=self.income_color, dash='dot'),
+        #         name='Income Trend'
+        #     )
+        # )
+
+        # # Adding Moving Average Trend Line for Income + Support
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=income_and_support_df['Month'],
+        #         y=income_and_support_df['Moving_Avg'],
+        #         mode='lines',
+        #         line=dict(color=self.income_and_support_color, dash='dot'),
+        #         name='Income + Support Trend'
+        #     )
+        # )
+
+        # Update layout
+        fig.update_layout(
+            title='Monthly Delta between Income (Income+Support) and Expenses',
+            barmode='group',
+            width=1980,
+            height=800,
+            xaxis_title='Month',
+            yaxis_title='Delta Amount (€)',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+
+        # Update x-axis format for dates
+        months_list = sorted(list(set(dataset['Month'])))
+        fig.update_xaxes(
+            tickvals=months_list,
+            tickmode='array',
+            tickformat="%b %Y"
+        )
+
+        # Rotate labels if there are more than 12 months
+        if len(months_list) > 12:
+            fig.update_xaxes(tickangle=-30)
+
+        return fig
+
+
     def plot_lineplot_income_and_expenses_cum(self, dataset):
         """
         Generate a plotly figure showing cumulative monthly income, income+support and expenses.
 
-        The function groups data by month, then generates a line chart showing the cumulative sum 
+        The function groups data by month, then generates a line chart showing the cumulative sum
         of the amount for income, income+support, and expenses per month.
 
         Parameters
@@ -542,7 +766,7 @@ class ReportGenerator:
         Parameters
         ----------
         dataset : pd.DataFrame
-            The input DataFrame containing financial transaction data. 
+            The input DataFrame containing financial transaction data.
             It should include the following columns:
             - 'Transaction Type'
             - 'Month'
@@ -558,7 +782,7 @@ class ReportGenerator:
         Notes
         -----
         The input DataFrame is expected to have been preprocessed such that it only contains
-        income transactions ('Transaction Type' == 'Reddito'). 
+        income transactions ('Transaction Type' == 'Reddito').
         Any missing 'Notes' are filled with 'Non specificato'.
         """
 
@@ -711,7 +935,7 @@ class ReportGenerator:
         dataset['Notes'] = dataset['Notes'].fillna('Non specificato')
         dataset['Amount_str'] = dataset['Amount'].astype(str)
         dataset['Notes'] = ' • ' + dataset['Date'] + ': ' + dataset['Notes'] + ' → ' + dataset['Amount_str'] + '€'
-        
+
         dataset = dataset.groupby(['Month', 'Category']).agg({
             'Amount': 'sum',
             'Notes': lambda x: '\n<br>'.join(x)
@@ -837,7 +1061,7 @@ class ReportGenerator:
 
         # create empty figure
         fig = make_subplots(
-            rows=1, cols=2, subplot_titles=("", ""), 
+            rows=1, cols=2, subplot_titles=("", ""),
             specs=[[{'type':'pie'}, {'type':'pie'}]]
             )
 
