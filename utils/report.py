@@ -14,9 +14,7 @@ Dataviz Utils
 import os
 import numpy as np
 import pandas as pd
-from datetime import datetime
 import plotly.graph_objects as go
-import matplotlib.colors as mcolors
 from plotly.subplots import make_subplots
 
 # Custom functions
@@ -66,9 +64,45 @@ class ReportGenerator:
 
 
     # MAIN FUNCTION
+
     def generate_reports(self, show_plots=False):
         """
-        TODO: generate docstring
+        Generate and save financial reports including various plots such as spider plots, treemaps, line plots,
+        and bar plots for income, expenses, and transfers.
+
+        This function iterates over datasets for expenses and transfers, generates multiple types of plots for
+        each dataset, and appends these plots to corresponding yearly reports. It optionally displays these plots.
+        Finally, it saves the generated reports as HTML files.
+
+        Parameters
+        ----------
+        show_plots : bool, optional
+            If True, displays each generated plot. Default is False.
+
+        Notes
+        -----
+        The function handles multiple types of plots:
+        - Yearly Spiderplot for total income and expenses.
+        - Yearly Treemap for total income and expenses.
+        - Lineplot for monthly income and expenses.
+        - Plot for monthly delta.
+        - Cumulative lineplot for income and expenses.
+        - Cumulative plot for monthly delta.
+        - Monthly income plot.
+        - Monthly expenses plot.
+        - Monthly income and expenses plot.
+        - Barplot for transfers.
+
+        Each plot is appended to the `reports` attribute of the class, categorized by year.
+        The function also saves each report as an HTML file in a specified directory.
+
+        Examples
+        --------
+        To generate and save reports without showing the plots:
+        >>> generate_reports(show_plots=False)
+
+        To generate, display, and save reports:
+        >>> generate_reports(show_plots=True)
         """
 
         # for each year
@@ -154,7 +188,6 @@ class ReportGenerator:
                 fig_list=value,
                 title=title
             )
-
 
 
     # DATA VISUALIZATIONS
@@ -830,8 +863,8 @@ class ReportGenerator:
         delta_income_support = (income_and_support_df['Amount'] - expenses_df['Amount'].reindex_like(income_and_support_df, method='ffill')).cumsum()
 
         # Calculate monthly deltas (not cumulative)
-        monthly_delta_income = (income_df['Amount'] - expenses_df['Amount'].reindex_like(income_df, method='ffill'))
-        monthly_delta_income_support = (income_and_support_df['Amount'] - expenses_df['Amount'].reindex_like(income_and_support_df, method='ffill'))
+        monthly_delta_income = income_df['Amount'] - expenses_df['Amount'].reindex_like(income_df, method='ffill')
+        monthly_delta_income_support = income_and_support_df['Amount'] - expenses_df['Amount'].reindex_like(income_and_support_df, method='ffill')
 
         # Calculate average deltas
         avg_delta_income = monthly_delta_income.mean()
@@ -1172,7 +1205,35 @@ class ReportGenerator:
 
     def plot_income_and_expenses_by_month(self, dataset):
         """
-        TODO: write
+        Generate a plotly figure with dual pie charts representing income and expenses categorized by month.
+
+        This function preprocesses the given dataset to separate income and expenses, then creates a pie chart
+        for each month. Each pie chart shows the distribution of income or expenses across different categories.
+        The function also calculates and displays the total income, expenses, and profit for each month.
+        A slider is added to the plot to navigate through different months.
+
+        Parameters
+        ----------
+        dataset : DataFrame
+            The dataset containing transaction data.
+            Expected columns include 'Transaction Type', 'Category', 'Amount', 'Month', 'Date', and 'Notes'.
+
+        Returns
+        -------
+        fig : plotly.graph_objs._figure.Figure
+            A plotly figure containing the dual pie charts for income and expenses by month.
+
+        Notes
+        -----
+        The pie charts are interactive, allowing the user to hover over sections to see detailed notes about
+        each category. The slider at the bottom of the plot facilitates the navigation through different months,
+        updating the pie charts and the displayed totals and profit percentage for the selected month.
+
+        Examples
+        --------
+        >>> dataset = pd.read_csv('financial_data.csv')
+        >>> fig = plot_income_and_expenses_by_month(dataset)
+        >>> fig.show()
         """
 
         # preprocess dataset
@@ -1337,7 +1398,34 @@ class ReportGenerator:
 
     def plot_barplot_transfers(self, dataset):
         """
-        TODO: update
+        Generate a stacked bar plot visualizing money transfers from a primary account, categorized by the 'To' field.
+
+        The function processes the dataset to plot the total transfers for each category defined in the 'To' field
+        over time. Each bar in the plot represents transfers for a specific month and category. The function also
+        adds a subtitle showing the total transfers for each category.
+
+        Parameters
+        ----------
+        dataset : DataFrame
+            The dataset containing transfer data. Expected columns include 'Month', 'Amount', 'To', 'From', and 'Notes'.
+
+        Returns
+        -------
+        fig : plotly.graph_objs._figure.Figure
+            A plotly figure containing the stacked bar plot for money transfers.
+
+        Notes
+        -----
+        The function converts 'Month' to a datetime format for accurate chronological plotting. The bars are colored
+        according to a predefined color dictionary for categories. It also includes interactive hover templates
+        displaying detailed information for each transfer. The x-axis is formatted to display month and year, and
+        the labels are automatically rotated if there are more than 12 months.
+
+        Examples
+        --------
+        >>> dataset = pd.read_csv('transfer_data.csv')
+        >>> fig = plot_barplot_transfers(dataset)
+        >>> fig.show()
         """
 
         # Convert 'Month' to datetime
@@ -1397,6 +1485,7 @@ class ReportGenerator:
         )
 
         months_list = sorted(list(set(dataset['Month'])))
+        months_list = self.__fill_month_gaps(months_list)
         fig.update_xaxes(
             tickvals=months_list,  # list of all months
             tickmode='array',      # use provided tick values as coordinates
@@ -1414,7 +1503,30 @@ class ReportGenerator:
     # UTILITY FUNCTIONS
 
     def __handle_datasets(self, data_dict):
+        """
+        Process and organize datasets for expenses and transfers into separate yearly datasets and a combined dataset.
 
+        This function takes a dictionary of datasets for expenses and transfers, concatenates them into a combined dataset
+        for each category (expenses and transfers), and also segregates them into individual datasets based on the year.
+        It updates the class attributes to store these datasets and initializes report lists for each year.
+
+        Parameters
+        ----------
+        data_dict : dict
+            A dictionary containing two keys: 'expenses' and 'transfers'.
+            Each key is associated with a list of DataFrames, where each DataFrame represents data for a specific year.
+
+        Notes
+        -----
+        The function assumes that each DataFrame in the lists has a 'Year' column. It uses the first entry of this
+        column to determine the year of the dataset. The function updates the following class attributes:
+        - `datasets_expenses`: A dictionary with years as keys and the corresponding expenses DataFrame as values.
+        - `datasets_transfers`: Similar to `datasets_expenses`, but for transfers.
+        - `reports`: A dictionary initialized with empty lists for each year.
+        - `min_year` and `max_year`: The minimum and maximum years across all datasets, excluding the 'all' key.
+
+        This method is meant to be used internally within the class to prepare data for further analysis and reporting.
+        """
         available_expenses_datasets = data_dict['expenses']
         self.datasets_expenses['all'] = pd.concat(available_expenses_datasets)
 
@@ -1439,7 +1551,35 @@ class ReportGenerator:
 
 
     def __handle_colors(self, category_color_dict):
+        """
+        Initialize and assign colors for different categories in expenses and transfers.
 
+        This function sets up a palette of colors and assigns them to various categories in expenses and transfers.
+        It ensures that each category is associated with a unique color. If a category is already assigned a color
+        in the input dictionary, that color is retained. Otherwise, the function assigns a new color from the palette.
+
+        Parameters
+        ----------
+        category_color_dict : dict
+            A dictionary mapping categories to colors. Used as the starting point for assigning colors to
+            expense categories. If None, all categories are assigned new colors.
+
+        Notes
+        -----
+        The function handles two main logic blocks:
+        1. Expenses Logic: Assigns colors to expense categories. It first checks which categories do not have
+        assigned colors and then assigns them colors from a predefined palette.
+        2. Transfers Logic: Similar to expenses, but for transfer categories.
+
+        The function also defines several class attributes related to colors:
+        - `palette_colors`: A list of colors used for assigning to categories.
+        - `expenses_color`, `expenses_color_translucent`, `income_color`, `income_color_translucent`,
+        `income_and_support_color`, `income_and_support_color_translucent`: Specific colors for various types
+        of transactions.
+
+        Additionally, the function uses two internal helper functions (`__get_unique_categories_expenses` and
+        `__get_unique_categories_transfers`) to identify unique categories that need colors assigned.
+        """
         # * General Logic *
 
         # setup allowed colors and fixed colors
@@ -1508,7 +1648,22 @@ class ReportGenerator:
 
 
     def __get_unique_categories_expenses(self):
+        """
+        Retrieve a set of unique categories from the expenses datasets.
 
+        This function concatenates all the expenses datasets available in the class and extracts a set of
+        unique categories from the 'Category' column.
+
+        Returns
+        -------
+        set
+            A set of unique category names found in the expenses datasets.
+
+        Notes
+        -----
+        The function is designed to be used internally within the class to aid in the process of color assignment
+        and data categorization for expenses.
+        """
         list_of_datasets = [dataset for dataset in self.datasets_expenses.values()]
         complete_dataset = pd.concat(list_of_datasets)
         unique_categories = set(complete_dataset['Category'].unique())
@@ -1516,7 +1671,22 @@ class ReportGenerator:
 
 
     def __get_unique_categories_transfers(self):
+        """
+        Retrieve a set of unique categories from the transfers datasets.
 
+        This function concatenates all the transfers datasets available in the class and extracts a set of
+        unique categories from the 'To' column.
+
+        Returns
+        -------
+        set
+            A set of unique category names found in the transfers datasets.
+
+        Notes
+        -----
+        The function is intended for internal use within the class to assist in categorizing and assigning colors
+        to transfer data.
+        """
         list_of_datasets = [dataset for dataset in self.datasets_transfers.values()]
         complete_dataset = pd.concat(list_of_datasets)
         unique_categories = set(complete_dataset['To'].unique())
@@ -1524,6 +1694,32 @@ class ReportGenerator:
 
 
     def __get_distant_colors(self, n_colors):
+        """
+        Generate a list of colors that are visually distinct from each other.
+
+        This function selects colors from a predefined palette in such a way that the chosen colors are as distinct
+        as possible from each other, based on the number of colors requested.
+
+        Parameters
+        ----------
+        n_colors : int
+            The number of distinct colors to retrieve.
+
+        Returns
+        -------
+        list
+            A list of RGBA color strings.
+
+        Raises
+        ------
+        ValueError
+            If `n_colors` is less than or equal to 0, or greater than the number of available colors in the palette.
+
+        Notes
+        -----
+        The function uses a step calculation to ensure maximum distance between each color in the list.
+        If the number of requested colors exceeds the length of the palette, the palette is repeated to satisfy the request.
+        """
 
         if n_colors <= 0 or n_colors > len(self.palette_colors):
             self.palette_colors = self.palette_colors + self.palette_colors
@@ -1535,6 +1731,33 @@ class ReportGenerator:
         step = len(self.palette_colors) // (n_colors - 1)
 
         return [self.palette_colors[min(i * step, len(self.palette_colors)-1)] for i in range(n_colors)]
+
+
+    def __fill_month_gaps(self, months):
+        """
+        Fill gaps in a list of pandas Timestamp objects representing months.
+
+        Parameters
+        ----------
+        months : list of pandas.Timestamp
+            The list of Timestamp objects where each represents the first day of a month.
+
+        Returns
+        -------
+        list of pandas.Timestamp
+            A new list of Timestamp objects with gaps filled, representing each month in the range.
+        """
+        if not months:
+            return []
+
+        # Sort the list to ensure it is in chronological order
+        sorted_months = sorted(months)
+
+        # Create a date range from the first to the last month
+        start, end = sorted_months[0], sorted_months[-1]
+        all_months = pd.date_range(start=start, end=end, freq='MS')
+
+        return list(all_months)
 
 
     def __save_list_of_plotly_figs(self, path, fig_list, title="My Report"):
