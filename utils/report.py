@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import plotly.graph_objects as go
+import matplotlib.colors as mcolors
 from plotly.subplots import make_subplots
 
 # Custom functions
@@ -105,6 +106,12 @@ class ReportGenerator:
             if show_plots:
                 plot.show()
 
+            # * DELTA (CUMULATIVE) *
+            plot = self.plot_cumulative_monthly_delta(dataset=value)
+            self.reports[key].append(plot)
+            if show_plots:
+                plot.show()
+
             # * INCOME BY MONTH *
             plot = self.plot_income_by_month(dataset=value)
             self.reports[key].append(plot)
@@ -123,6 +130,7 @@ class ReportGenerator:
             if show_plots:
                 plot.show()
 
+        # * BARPLOT OF TRANSFERS *
         # for each year
         for key,value in self.datasets_transfers.items():
             plot = self.plot_barplot_transfers(dataset=value)
@@ -527,6 +535,27 @@ class ReportGenerator:
             A plotly figure containing the generated bar plot.
         """
 
+        # Function to darken color
+        def darken_color(color, factor=20):
+
+            start = color.find('(')+1
+            end = color.find(')')
+            rgb_list = [int(c) for c in color[start:end].split(', ')[0:3]]
+
+            updated_rgb_list = []
+            for c in rgb_list:
+                if c + factor <= 255:
+                    updated_rgb_list.append(c+factor)
+                else:
+                    updated_rgb_list.append(c)
+
+            darkened_color = f"rgba({updated_rgb_list[0]}, {updated_rgb_list[1]}, {updated_rgb_list[2]}, 1)"
+            return darkened_color
+
+        # Define function to determine text color based on value
+        def get_text_color(values):
+            return ['black' if v >= 0 else self.expenses_color for v in values]
+
         # Prepare data
         income_df = dataset.loc[
             (dataset['Transaction Type'] == 'Reddito') & (dataset['Category'] != 'Supporto Famiglia')
@@ -548,12 +577,39 @@ class ReportGenerator:
         income_df['Moving_Avg'] = delta_income.rolling(window=window_size).mean()
         income_and_support_df['Moving_Avg'] = delta_income_support.rolling(window=window_size).mean()
 
-        # Define function to determine text color based on value
-        def get_text_color(values):
-            return ['green' if v >= 0 else 'red' for v in values]
+        # Calculate mean for Delta (Income) and Delta (Income + Support)
+        mean_delta_income = delta_income.mean()
+        mean_delta_income_support = delta_income_support.mean()
+
+        # Define the x-range for the horizontal lines
+        full_x_range = [dataset['Month'].min(), dataset['Month'].max()]
 
         # Create plot
         fig = go.Figure()
+
+        # Add mean lines for Delta (Income)
+        fig.add_trace(
+            go.Scatter(
+                x=full_x_range,
+                y=[mean_delta_income, mean_delta_income],
+                mode='lines',
+                line=dict(color=darken_color(self.income_color), dash='dot'),
+                name='Mean Delta (Income)',
+                visible='legendonly'  # Initially hidden, can be toggled in the legend
+            )
+        )
+
+        # Add mean lines for Delta (Income + Support)
+        fig.add_trace(
+            go.Scatter(
+                x=full_x_range,
+                y=[mean_delta_income_support, mean_delta_income_support],
+                mode='lines',
+                line=dict(color=darken_color(self.income_and_support_color), dash='dot'),
+                name='Mean Delta (Income + Support)',
+                visible='legendonly'  # Initially hidden, can be toggled in the legend
+            )
+        )
 
         # Delta relative to Income
         fig.add_trace(
@@ -562,7 +618,7 @@ class ReportGenerator:
                 y=delta_income,
                 text=delta_income.apply(lambda x: f"{x:,.0f}€"),
                 textposition='outside',
-                marker_color=self.income_color,
+                marker_color=self.income_color_translucent,
                 name='Delta (Income)',
                 insidetextfont=dict(color=get_text_color(delta_income)),
                 outsidetextfont=dict(color=get_text_color(delta_income))
@@ -576,38 +632,18 @@ class ReportGenerator:
                 y=delta_income_support,
                 text=delta_income_support.apply(lambda x: f"{x:,.0f}€"),
                 textposition='outside',
-                marker_color=self.income_and_support_color,
+                marker_color=self.income_and_support_color_translucent,
                 name='Delta (Income + Support)',
                 insidetextfont=dict(color=get_text_color(delta_income_support)),
-                outsidetextfont=dict(color=get_text_color(delta_income_support))
+                outsidetextfont=dict(color=get_text_color(delta_income_support)),
+                visible='legendonly'  # Initially hidden, can be toggled in the legend
             )
         )
 
-        # # Adding Moving Average Trend Line for Income
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=income_df['Month'],
-        #         y=income_df['Moving_Avg'],
-        #         mode='lines',
-        #         line=dict(color=self.income_color, dash='dot'),
-        #         name='Income Trend'
-        #     )
-        # )
-
-        # # Adding Moving Average Trend Line for Income + Support
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=income_and_support_df['Month'],
-        #         y=income_and_support_df['Moving_Avg'],
-        #         mode='lines',
-        #         line=dict(color=self.income_and_support_color, dash='dot'),
-        #         name='Income + Support Trend'
-        #     )
-        # )
-
         # Update layout
+        title = f'Monthly Delta between Income (Income+Support) and Expenses<br><sub>Average Delta (Income): {mean_delta_income:.2f}€, Average Delta (Income + Support): {mean_delta_income_support:.2f}€</sub>'
         fig.update_layout(
-            title='Monthly Delta between Income (Income+Support) and Expenses',
+            title=title,
             barmode='group',
             width=1980,
             height=800,
@@ -751,6 +787,122 @@ class ReportGenerator:
             fig.update_xaxes(
                 tickangle=-30,         # rotate labels
             )
+
+        return fig
+
+
+    def plot_cumulative_monthly_delta(self, dataset):
+        """
+        Generate a plotly figure showing the cumulative monthly delta between income and expenses using bar plots.
+        Income+Support delta is initially hidden and can be viewed by clicking in the legend.
+        The subtitle includes information on the average delta for both Income and Income+Support.
+
+        Parameters
+        ----------
+        dataset : DataFrame
+            The dataset that contains the transactions. Expected columns are
+            - 'Transaction Type'
+            - 'Category'
+            - 'Amount'
+            - 'Month'
+
+        Returns
+        -------
+        fig : plotly.graph_objs._figure.Figure
+            A plotly figure containing the generated cumulative delta bar plot.
+        """
+
+        # Prepare data
+        income_df = dataset.loc[
+            (dataset['Transaction Type'] == 'Reddito') & (dataset['Category'] != 'Supporto Famiglia')
+        ].groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
+
+        income_and_support_df = dataset.loc[
+            (dataset['Transaction Type'] == 'Reddito')
+        ].groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
+
+        expenses_df = dataset.loc[
+            (dataset['Transaction Type'] == 'Spesa')
+        ].groupby(['Month']).agg({'Amount': 'sum'}).reset_index()
+
+        # Calculate cumulative deltas
+        delta_income = (income_df['Amount'] - expenses_df['Amount'].reindex_like(income_df, method='ffill')).cumsum()
+        delta_income_support = (income_and_support_df['Amount'] - expenses_df['Amount'].reindex_like(income_and_support_df, method='ffill')).cumsum()
+
+        # Calculate monthly deltas (not cumulative)
+        monthly_delta_income = (income_df['Amount'] - expenses_df['Amount'].reindex_like(income_df, method='ffill'))
+        monthly_delta_income_support = (income_and_support_df['Amount'] - expenses_df['Amount'].reindex_like(income_and_support_df, method='ffill'))
+
+        # Calculate average deltas
+        avg_delta_income = monthly_delta_income.mean()
+        avg_delta_income_support = monthly_delta_income_support.mean()
+
+        # Define function to determine text color based on value
+        def get_text_color(values):
+            return ['black' if v >= 0 else self.expenses_color for v in values]
+
+        # Create plot
+        fig = go.Figure()
+
+        # Cumulative Delta relative to Income
+        fig.add_trace(
+            go.Bar(
+                x=income_df['Month'],
+                y=delta_income,
+                text=delta_income.apply(lambda x: f"{x:,.0f}€"),
+                textposition='outside',
+                marker_color=self.income_color_translucent,
+                name='Cumulative Delta (Income)',
+                insidetextfont=dict(color=get_text_color(delta_income)),
+                outsidetextfont=dict(color=get_text_color(delta_income))
+            )
+        )
+
+        # Cumulative Delta relative to Income + Support
+        fig.add_trace(
+            go.Bar(
+                x=income_and_support_df['Month'],
+                y=delta_income_support,
+                text=delta_income_support.apply(lambda x: f"{x:,.0f}€"),
+                textposition='outside',
+                marker_color=self.income_and_support_color,
+                name='Cumulative Delta (Income + Support)',
+                visible='legendonly',  # Initially hidden, can be toggled in the legend
+                insidetextfont=dict(color=get_text_color(delta_income_support)),
+                outsidetextfont=dict(color=get_text_color(delta_income_support))
+            )
+        )
+
+        # Update layout for stacked bar chart with no gaps
+        fig.update_layout(
+            title='Cumulative Monthly Delta between Income (Income+Support) and Expenses<br>'
+                f'<sub>Average Delta (Income): {avg_delta_income:.2f}€, '
+                f'Average Delta (Income + Support): {avg_delta_income_support:.2f}€</sub>',
+            barmode='group',  # Stacked bar mode
+            width=1980,
+            height=800,
+            xaxis_title='Month',
+            yaxis_title='Cumulative Delta Amount (€)',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+
+        # Update x-axis format for dates
+        months_list = sorted(list(set(dataset['Month'])))
+        fig.update_xaxes(
+            tickvals=months_list,
+            tickmode='array',
+            tickformat="%b %Y"
+        )
+
+        # Rotate labels if there are more than 12 months
+        if len(months_list) > 12:
+            fig.update_xaxes(tickangle=-30)
 
         return fig
 
@@ -1244,9 +1396,7 @@ class ReportGenerator:
             )
         )
 
-        # Setup ticks
-        year = dataset['Month'].min().year
-        months_list = [datetime(year, month, 1).strftime('%Y-%m') for month in range(1, 13)]
+        months_list = sorted(list(set(dataset['Month'])))
         fig.update_xaxes(
             tickvals=months_list,  # list of all months
             tickmode='array',      # use provided tick values as coordinates
