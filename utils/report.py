@@ -1997,6 +1997,10 @@ class ReportGenerator:
             icon_path = str(os.path.join(PACKAGE_DIR, '..', 'images', 'chart.svg'))
             gif_path = str(os.path.join(PACKAGE_DIR, '..', 'images', 'finance-cards.webp'))
 
+            # Check if the gif_path exists
+            if not os.path.exists(gif_path):
+                raise FileNotFoundError(f"The file {gif_path} does not exist.")
+
             with open(path, "w", encoding="utf-8") as output_file:
                 output_file.write(
                     f"""
@@ -2019,7 +2023,7 @@ class ReportGenerator:
                     <body>
                     <div class='centered'>
                         <br><h1>{title}</h1>
-                        <img src={gif_path} alt="Finance Cards" width="125">
+                        <!--<img src={icon_path} alt="Finance Cards" width="125">-->
                     """
                 )
 
