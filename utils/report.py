@@ -1920,12 +1920,15 @@ class ReportGenerator:
         self.income_and_support_color = 'rgba(100, 141, 229, 1)'
         self.income_and_support_color_translucent = 'rgba(100, 141, 229, 0.8)'
 
+        # setup color palette
+        if category_color_dict:
+            self.category_color_dict = category_color_dict
+        else:
+            self.category_color_dict = {}
+
         # * Expenses Logic *
 
-        # setup color palette
-        self.category_color_dict_expenses = category_color_dict
-        if self.category_color_dict_expenses is None:
-            self.category_color_dict_expenses = {}
+        self.category_color_dict_expenses = self.category_color_dict.get('expenses', {})
 
         # find categories with no color assigned
         unique_categories_expenses = self.__get_unique_categories_expenses()
@@ -1947,7 +1950,7 @@ class ReportGenerator:
         # * Transfers Logic *
 
         # setup color palette
-        self.category_color_dict_transfers = {}
+        self.category_color_dict_transfers = self.category_color_dict.get('transfers', {})
 
         # find categories with no color assigned
         unique_categories_transfers = self.__get_unique_categories_transfers()
@@ -1957,11 +1960,12 @@ class ReportGenerator:
         )
 
         # obtain colors and assign them
-        colors_to_assign_transfers = self.__get_distant_colors(
-            n_colors=len(unique_categories_transfers)
-        )
-        for idx, category in enumerate(unique_categories_transfers):
-            self.category_color_dict_transfers[category] = colors_to_assign_transfers[idx]
+        if unique_categories_transfers:
+            colors_to_assign_transfers = self.__get_distant_colors(
+                n_colors=len(unique_categories_transfers)
+            )
+            for idx, category in enumerate(unique_categories_transfers):
+                self.category_color_dict_transfers[category] = colors_to_assign_transfers[idx]
 
         # finally, sort the dict by key (for better datavizs)
         self.category_color_dict_transfers = dict(
