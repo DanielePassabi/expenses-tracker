@@ -29,7 +29,7 @@ exclude = [
     "notebooks",
 ]
 
-line-length = 99 # Used by both linter and E501
+line-length = 100 # Used by both linter and E501
 indent-width = 4
 
 [lint]

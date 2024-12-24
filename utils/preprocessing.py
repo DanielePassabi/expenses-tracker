@@ -1,64 +1,50 @@
-"""
-Preprocessing
+"""Preprocessing.
 
 Available Preprocessing Apps
 - fleur | https://apps.apple.com/it/app/fleur-gestione-spese-e-budget/id1621020173
 """
 
-# Custom Pylint rules for the file
-# pylint: disable=C0301
-# C0301:line-too-long
-
+# ⚙️ Ruff Settings
+# ruff: noqa: PTH118 PTH120 PTH123
 
 # Libraries
 import os
 from io import StringIO
+
 import pandas as pd
 
-
 AVAILABLE_PREPROCESSING_APPS = {
-
     # no operations needed for dummy
     'dummy': {
         'columns_to_drop': ['E'],
     },
-
     'fleur': {
         'columns_to_drop': ['E'],
     },
-
     '1money': {
-        'delete_rows': {
-            'start': 0,
-            'end': -5
-        },
-        'columns_to_drop': ['TAG','VALUTA 2','IMPORTO 2','VALUTA'],
+        'delete_rows': {'start': 0, 'end': -5},
+        'columns_to_drop': ['TAG', 'VALUTA 2', 'IMPORTO 2', 'VALUTA'],
         'columns_to_rename': {
             'DATA': 'Date',
             'TIPOLOGIA': 'Transaction Type',
             'AL CONTO / ALLA CATEGORIA': 'Category',
             'IMPORTO': 'Amount',
             'NOTE': 'Notes',
-            'DAL CONTO': 'Account'
+            'DAL CONTO': 'Account',
         },
-        'values_to_rename': {
-            'Transaction Type': {
-                'Entrata': 'Reddito'
-            }
-        },
-        'date_format': '%d/%m/%y'
+        'values_to_rename': {'Transaction Type': {'Entrata': 'Reddito'}},
+        'date_format': '%d/%m/%y',
     },
-
-    'inbank': {}
-
+    'inbank': {},
 }
 
 
 # MAIN FUNCTIONS
 
-def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
+
+def preprocess_csv(csv_path: str, app: str = 'dummy', app_custom_dict=None):
     """
-    Import a CSV file and perform some preprocessing operations based on the specified application. 
+    Import a CSV file and perform some preprocessing operations based on the specified application.
 
     Parameters
     ----------
@@ -70,11 +56,10 @@ def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
     Returns
     -------
     list of pandas.DataFrame
-        If `app` is supported, returns a list of DataFrames, 
+        If `app` is supported, returns a list of DataFrames,
         each containing the data for a particular year.
         Otherwise, returns None.
     """
-
     # * EXPENSES *
 
     # 1. Import
@@ -91,15 +76,11 @@ def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
 
     # 2. Custom Preprocessing
     dataset_expenses = _apply_custom_preprocessing(
-        dataset=dataset_expenses,
-        app=app,
-        app_custom_dict=app_custom_dict
-        )
+        dataset=dataset_expenses, app=app, app_custom_dict=app_custom_dict
+    )
 
     # 3. General Preprocessing
-    dataset_expenses = _apply_general_preprocessing(
-        dataset=dataset_expenses
-        )
+    dataset_expenses = _apply_general_preprocessing(dataset=dataset_expenses)
 
     # 4. Save Datasets by Year
     available_years = dataset_expenses['Year'].unique().tolist()
@@ -117,36 +98,37 @@ def preprocess_csv(csv_path: str, app: str='dummy', app_custom_dict=None):
         dataset_transfers = pd.read_csv(csv_transfers_path, on_bad_lines='warn')
 
         # 2. General Preprocessing
-        dataset_transfers = _apply_general_preprocessing(
-            dataset=dataset_transfers
-            )
+        dataset_transfers = _apply_general_preprocessing(dataset=dataset_transfers)
 
         # 3. Save Datasets by Year
         datasets_transfers_list = []
         for year in available_years:
-            temp_df = dataset_transfers.loc[dataset_transfers['Year'] == year].reset_index(drop=True)
+            temp_df = dataset_transfers.loc[dataset_transfers['Year'] == year].reset_index(
+                drop=True
+            )
             datasets_transfers_list.append(temp_df)
     else:
         datasets_transfers_list = []
 
     # * SAVE *
     # create dataframe dict
-    datasets_dict = {
+    return {
         'expenses': datasets_expenses_list,
-        'transfers': datasets_transfers_list
+        'transfers': datasets_transfers_list,
     }
-    return datasets_dict
 
 
 # SUPPORT FUNCTIONS
 
+
 def _split_fleur_csv(csv_path):
-    """
+    """Split Fleur CSV file into two separate datasets.
+
     The Fleur .csv has 2 datasets inside
     This functions splits them and saves them separately.
     """
     # Read the entire file
-    with open(csv_path, 'r', encoding='utf-8') as file:
+    with open(csv_path, encoding='utf-8') as file:
         data = file.read()
 
     # Split the data where the row is empty
@@ -172,60 +154,61 @@ def _split_fleur_csv(csv_path):
 
 
 def _apply_custom_preprocessing(dataset, app, app_custom_dict):
-
     if app in AVAILABLE_PREPROCESSING_APPS:
         print(f"Starting preprocessing for app '{app}'")
         settings = AVAILABLE_PREPROCESSING_APPS[app]
 
     elif app == 'custom':
         if app_custom_dict is not None:
-            print("Starting custom preprocessing")
+            print('Starting custom preprocessing')
             settings = app_custom_dict
         else:
             print("Sorry, you have to provide an 'app_custom_dict' for your custom application.")
             return []
 
     else:
-        print(f"Sorry, application {app} is not supported. Please use app='custom' and provide your own 'app_custom_dict'")
+        print(
+            f'Sorry, application {app} is not supported. '
+            f"Please use app='custom' and provide your own 'app_custom_dict'"
+        )
         return []
 
-    # A. Setting: 'delete_row'
+    # 1. Setting: 'delete_row'
     if 'delete_rows' in settings:
-        dataset = dataset[settings['delete_rows']['start']:settings['delete_rows']['end']]
+        dataset = dataset[settings['delete_rows']['start'] : settings['delete_rows']['end']]
 
-    # B. Settings: 'columns_to_drop'
+    # 2. Settings: 'columns_to_drop'
     if 'columns_to_drop' in settings:
         dataset = dataset.drop(settings['columns_to_drop'], axis=1)
 
-    # C. Settings: 'columns_to_rename'
+    # 3. Settings: 'columns_to_rename'
     if 'columns_to_rename' in settings:
         dataset = dataset.rename(columns=settings['columns_to_rename'])
 
-    # D. Settings: 'values_to_rename'
+    # 4. Settings: 'values_to_rename'
     if 'values_to_rename' in settings:
         for col in settings['values_to_rename']:
-            for key,value in settings['values_to_rename'][col].items():
-                dataset[col] = dataset[col].replace(key,value)
+            for key, value in settings['values_to_rename'][col].items():
+                dataset[col] = dataset[col].replace(key, value)
 
-    # E. Settings: 'date_format'
+    # 5. Settings: 'date_format'
     if 'date_format' in settings:
-        dataset["Date"] = pd.to_datetime(dataset["Date"], format=settings['date_format'])
+        dataset['Date'] = pd.to_datetime(dataset['Date'], format=settings['date_format'])
 
     return dataset
 
 
 def _apply_general_preprocessing(dataset):
-
     # 1. add information about year and month
-    dataset["Date"] = pd.to_datetime(dataset["Date"])
-    dataset["Year"] = dataset["Date"].dt.year
-    dataset["Month"] = dataset["Date"].dt.to_period('M')
+    dataset['Date'] = pd.to_datetime(dataset['Date'])
+    dataset['Year'] = dataset['Date'].dt.year
+    dataset['Month'] = dataset['Date'].dt.to_period('M')
 
     # 2. convert column based on type
 
     # str for dates, months, ...
-    dataset["Date"] = dataset["Date"].astype(str)
-    dataset["Month"] = dataset["Month"].astype(str)
+    dataset['Date'] = dataset['Date'].astype(str)
+    dataset['Month'] = dataset['Month'].astype(str)
 
     # numeric for 'Amount' and 'E'
     dataset['Amount'] = pd.to_numeric(dataset['Amount'], errors='coerce')
