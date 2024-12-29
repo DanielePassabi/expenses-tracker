@@ -61,5 +61,5 @@ Here's an example of a `app_custom_dict`:
 It follows an example of report, generated using some dummy data for the year 2023.
 
 <p align="center">
-  <img src="images/report_2023.png" alt="Dummy Report 2023">
+  <img src="docs/images/report_2023.png" alt="Dummy Report 2023">
 </p>

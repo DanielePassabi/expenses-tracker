@@ -1,4 +1,4 @@
-"""Dataviz Utils."""
+"""ReportGenerator."""
 
 # ⚙️ Ruff Settings
 # ruff: noqa: PTH100 PTH103 PTH110 PTH118 PTH120 PTH123 C408
@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Custom functions
-from .preprocessing import preprocess_csv
+from expenses_tracker.utils.preprocessing import preprocess_csv
 
 # Settings
 pd.set_option('mode.chained_assignment', None)
@@ -2109,8 +2109,8 @@ class ReportGenerator:
         If the HTML file specified by the 'path' parameter already exists, it will be overwritten.
         """
         try:
-            icon_path = str(os.path.join(PACKAGE_DIR, '..', 'images', 'chart.svg'))
-            gif_path = str(os.path.join(PACKAGE_DIR, '..', 'images', 'finance-cards.webp'))
+            icon_path = str(os.path.join(PACKAGE_DIR, 'images', 'chart.svg'))
+            gif_path = str(os.path.join(PACKAGE_DIR, 'images', 'finance-cards.webp'))
 
             # Check if the gif_path exists
             if not os.path.exists(gif_path):
