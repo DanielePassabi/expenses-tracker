@@ -229,3 +229,223 @@ def plot_yearly_treemap(self, dataset):
     )
 
     return fig
+
+
+def plot_income_and_expenses_by_month(self, dataset):
+    """
+    Generate a fig. with dual pie charts representing income and expenses categorized by month.
+
+    This function preprocesses the given dataset to separate income and expenses, then creates a
+    pie chart for each month. Each pie chart shows the distribution of income or expenses across
+    different categories.
+
+    The function also calculates and displays the total income, expenses, and profit for each
+    month. A slider is added to the plot to navigate through different months.
+
+    Parameters
+    ----------
+    dataset : DataFrame
+        The dataset containing transaction data.
+        Expected columns include 'Transaction Type', 'Category', 'Amount', 'Month', 'Date', and
+        'Notes'.
+
+    Returns
+    -------
+    fig : plotly.graph_objs._figure.Figure
+        A plotly figure containing the dual pie charts for income and expenses by month.
+
+    Notes
+    -----
+    The pie charts are interactive, allowing the user to hover over sections to see detailed
+    notes about each category. The slider at the bottom of the plot facilitates the navigation
+    through different months, updating the pie charts and the displayed totals and profit
+    percentage for the selected month.
+
+    Examples
+    --------
+    >>> dataset = pd.read_csv('financial_data.csv')
+    >>> fig = plot_income_and_expenses_by_month(dataset)
+    >>> fig.show()
+    """
+    # preprocess dataset
+
+    income_df = dataset.copy()
+    income_df = income_df.loc[income_df['Transaction Type'] == 'Entrate']
+    income_df['Notes'] = income_df['Notes'].fillna('Non specificato')
+    income_df['Amount_str'] = income_df['Amount'].astype(str)
+    income_df['Notes'] = (
+        ' • '
+        + income_df['Date']
+        + ': '
+        + income_df['Notes']
+        + ' → '
+        + income_df['Amount_str']
+        + '€'
+    )
+
+    income_df = (
+        income_df.groupby(['Month', 'Category'])
+        .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
+        .reset_index()
+    )
+    income_df['Amount'] = round(income_df['Amount']).astype(int)
+
+    expenses_df = dataset.copy()
+    expenses_df = expenses_df.loc[expenses_df['Transaction Type'] == 'Spesa']
+    expenses_df['Notes'] = expenses_df['Notes'].fillna('Non specificato')
+    expenses_df['Amount_str'] = expenses_df['Amount'].astype(str)
+    expenses_df['Notes'] = (
+        ' • '
+        + expenses_df['Date']
+        + ': '
+        + expenses_df['Notes']
+        + ' → '
+        + expenses_df['Amount_str']
+        + '€'
+    )
+    expenses_df = (
+        expenses_df.groupby(['Month', 'Category'])
+        .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
+        .reset_index()
+    )
+    expenses_df['Amount'] = round(expenses_df['Amount']).astype(int)
+
+    # create dataviz
+
+    # get unique months for the slider steps
+    income_months = income_df['Month'].unique()
+    expenses_months = expenses_df['Month'].unique()
+
+    # create empty figure
+    fig = make_subplots(
+        rows=1, cols=2, subplot_titles=('', ''), specs=[[{'type': 'pie'}, {'type': 'pie'}]]
+    )
+
+    # loop over each month and create a pie chart
+    for month in income_months:
+        # income
+        df_month_income = income_df[income_df['Month'] == month]
+        fig.add_trace(
+            go.Pie(
+                labels=df_month_income['Category'],
+                values=df_month_income['Amount'],
+                visible=False,
+                name=month,
+                hole=0.4,
+                marker=dict(
+                    colors=[
+                        self.category_color_dict_expenses[cat]
+                        for cat in df_month_income['Category']
+                    ]
+                ),
+                textinfo='label+value',
+                texttemplate='<b>%{label}</b><br>%{value}€',
+                hovertext=df_month_income['Notes'],
+                hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
+                automargin=False,
+                opacity=1,
+            ),
+            1,
+            1,
+        )
+
+        # expenses
+        df_month_expenses = expenses_df[expenses_df['Month'] == month]
+        fig.add_trace(
+            go.Pie(
+                labels=df_month_expenses['Category'],
+                values=df_month_expenses['Amount'],
+                visible=False,
+                name=month,
+                hole=0.4,
+                marker=dict(
+                    colors=[
+                        self.category_color_dict_expenses[cat]
+                        for cat in df_month_expenses['Category']
+                    ]
+                ),
+                textinfo='label+value',
+                texttemplate='<b>%{label}</b> %{value}€',
+                hovertext=df_month_expenses['Notes'],
+                hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
+                automargin=False,
+                opacity=1,
+            ),
+            1,
+            2,
+        )
+
+    # make first trace visible
+    fig.data[0].visible = True
+    fig.data[1].visible = True
+
+    # create and add slider
+    steps = []
+    for i in list(range(len(income_months))):
+        # dynamic subtitle for info on total income and expenses of the month
+        df_temp = income_df[income_df['Month'] == income_months[i]]
+        tot_income = round(sum(df_temp['Amount']))
+        df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
+        tot_expenses = round(sum(df_temp['Amount']))
+        profit = tot_income - tot_expenses
+        profit_perc = round((profit / tot_income) * 100, 2)
+
+        # determine the color and sign of the profit value
+        if profit >= 0:
+            profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
+        else:
+            profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
+
+        subtitle = (
+            f'<br><br><sub>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: '
+            f'<b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
+        )
+
+        custom_label = pd.to_datetime(expenses_months[i]).strftime('%b %Y')
+        step = dict(
+            method='update',
+            args=[
+                {'visible': [False] * len(fig.data)},
+                {'title': f'Income and Expenses by Month{subtitle}'},
+            ],  # layout attribute
+            label=custom_label,  # set the name of each month
+        )
+        idx_1 = 2 * i
+        idx_2 = 2 * i + 1
+        step['args'][0]['visible'][idx_1] = True
+        step['args'][0]['visible'][idx_2] = True
+        steps.append(step)
+
+    sliders = [
+        dict(active=0, currentvalue={'prefix': 'Month: '}, pad={'t': 90, 'b': 0}, steps=steps)
+    ]
+
+    # dynamic subtitle for info on total income and expenses of first month
+    df_temp = income_df[income_df['Month'] == income_months[0]]
+    tot_income = round(sum(df_temp['Amount']))
+    df_temp = expenses_df[expenses_df['Month'] == expenses_months[0]]
+    tot_expenses = round(sum(df_temp['Amount']))
+    profit = tot_income - tot_expenses
+    profit_perc = round((profit / tot_income) * 100, 2)
+
+    # determine the color and sign of the profit value
+    if profit >= 0:
+        profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
+    else:
+        profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
+
+    subtitle = (
+        f'<br><br><sub>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: '
+        f'<b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
+    )
+
+    # add title, width, legend, ...
+    fig.update_layout(
+        sliders=sliders,
+        title=f'Income and Expenses by Month{subtitle}',
+        width=1980,
+        height=800,
+        showlegend=False,
+    )
+
+    return fig

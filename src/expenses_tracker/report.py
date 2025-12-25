@@ -645,9 +645,18 @@ class ReportGenerator:
         expenses_df['Amount_label'] = round(expenses_df['Amount']).astype(int).astype(str) + '€'
 
         # calculate means
-        income_mean = np.mean(income_df['Amount'])
-        income_support_mean = np.mean(income_and_support_df['Amount'])
-        expenses_mean = np.mean(expenses_df['Amount'])
+        income_mean = round(np.mean(income_df['Amount']))
+        income_support_mean = round(np.mean(income_and_support_df['Amount']))
+        expenses_mean = round(np.mean(expenses_df['Amount']))
+
+        # Create enhanced subtitle with mean values
+        subtitle = (
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Avg Income <b style="color: {self.income_color};">{income_mean:,}€</b>  •  '
+            f'Avg Income+Support <b style="color: {self.income_and_support_color};">{income_support_mean:,}€</b>  •  '
+            f'Avg Expenses <b style="color: {self.expenses_color};">{expenses_mean:,}€</b>'
+            f'</span>'
+        )
 
         # create plot
         fig = go.Figure()
@@ -661,8 +670,14 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income',
                 textposition='top center',
-                line=dict(color=self.income_color),
-                hovertemplate='Income of %{x}: %{y}€',
+                textfont={'size': 11, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                line={'color': self.income_color, 'width': 3},
+                marker={
+                    'size': 8,
+                    'color': self.income_color,
+                    'line': {'color': 'white', 'width': 2},
+                },
+                hovertemplate='<b>Income</b><br>%{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
@@ -675,8 +690,14 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income + Support',
                 textposition='top center',
-                line=dict(color=self.income_and_support_color),
-                hovertemplate='Income+Support of %{x}: %{y}€',
+                textfont={'size': 11, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                line={'color': self.income_and_support_color, 'width': 3},
+                marker={
+                    'size': 8,
+                    'color': self.income_and_support_color,
+                    'line': {'color': 'white', 'width': 2},
+                },
+                hovertemplate='<b>Income + Support</b><br>%{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
@@ -689,8 +710,14 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color=self.expenses_color),
-                hovertemplate='Expenses of %{x}: %{y}€',
+                textfont={'size': 11, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                line={'color': self.expenses_color, 'width': 3},
+                marker={
+                    'size': 8,
+                    'color': self.expenses_color,
+                    'line': {'color': 'white', 'width': 2},
+                },
+                hovertemplate='<b>Expenses</b><br>%{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
@@ -700,9 +727,11 @@ class ReportGenerator:
                 x=income_df['Month'],
                 y=[income_mean] * len(income_df['Month']),
                 mode='lines',
-                line=dict(color=self.income_color, width=1.5, dash='dash'),
+                line={'color': self.income_color, 'width': 2, 'dash': 'dot'},
                 name='Mean Income',
-                hovertemplate='Mean Income: %{y}€',
+                hovertemplate='<b>Mean Income:</b> €%{y:,.0f}<extra></extra>',
+                showlegend=True,
+                opacity=0.5,
                 visible='legendonly',
             )
         )
@@ -713,9 +742,11 @@ class ReportGenerator:
                 x=income_and_support_df['Month'],
                 y=[income_support_mean] * len(income_and_support_df['Month']),
                 mode='lines',
-                line=dict(color=self.income_and_support_color, width=1.5, dash='dash'),
+                line={'color': self.income_and_support_color, 'width': 2, 'dash': 'dot'},
                 name='Mean Income + Support',
-                hovertemplate='Mean Income+Support: %{y}€',
+                hovertemplate='<b>Mean Income + Support:</b> €%{y:,.0f}<extra></extra>',
+                showlegend=True,
+                opacity=0.5,
                 visible='legendonly',
             )
         )
@@ -726,30 +757,80 @@ class ReportGenerator:
                 x=expenses_df['Month'],
                 y=[expenses_mean] * len(expenses_df['Month']),
                 mode='lines',
-                line=dict(color=self.expenses_color, width=1.5, dash='dash'),
+                line={'color': self.expenses_color, 'width': 2, 'dash': 'dot'},
                 name='Mean Expenses',
-                hovertemplate='Mean Expenses: %{y}€',
+                hovertemplate='<b>Mean Expenses:</b> €%{y:,.0f}<extra></extra>',
+                showlegend=True,
+                opacity=0.5,
                 visible='legendonly',
             )
         )
 
+        # Modern layout configuration
         fig.update_layout(
-            title='Income (Income+Support) and Expenses<br><sub>Monthly Report</sub>',
+            title={
+                'text': f'<b>Monthly Income & Expenses Overview</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
             width=1980,
             height=800,
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 80, 'l': 80, 'r': 80},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            legend={
+                'orientation': 'h',
+                'yanchor': 'bottom',
+                'y': 1.02,
+                'xanchor': 'center',
+                'x': 0.5,
+                'font': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'bgcolor': 'rgba(255, 255, 255, 0.8)',
+            },
+            hovermode='x unified',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
         )
 
+        # Modern axis styling
         months_list = sorted(set(dataset['Month']))
         fig.update_xaxes(
-            tickvals=months_list,  # list of all months
-            tickmode='array',  # use provided tick values as coordinates
-            tickformat='%b %Y',  # custom date format
+            tickvals=months_list,
+            tickmode='array',
+            tickformat='%b %Y',
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+        )
+
+        fig.update_yaxes(
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            tickformat=',.0f',
+            title={'text': 'Amount (€)', 'font': {'size': 12, 'color': '#64748b'}},
         )
 
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
             fig.update_xaxes(
-                tickangle=-30,  # rotate labels
+                tickangle=-30,
             )
 
         return fig
@@ -776,31 +857,14 @@ class ReportGenerator:
         # 1. Helper Functions
         # -----------------------------
 
-        def darken_color(color, factor=20):
-            """
-            Lightly darkens an RGBA color by a given factor.
-
-            Assumes input like 'rgba(R, G, B, A)'.
-            """
-            start = color.find('(') + 1
-            end = color.find(')')
-            rgb_list = [int(c) for c in color[start:end].split(', ')[:3]]
-
-            updated_rgb_list = []
-            for val in rgb_list:
-                new_val = min(val + factor, 255)  # ensure we don't exceed 255
-                updated_rgb_list.append(new_val)
-
-            return f'rgba({updated_rgb_list[0]}, {updated_rgb_list[1]}, {updated_rgb_list[2]}, 1)'
-
         def get_text_color(values):
             """
             Determine the text color for bar labels.
 
-            - If delta >= 0: use black text
-            - If delta < 0: use `self.expenses_color`
+            - If delta >= 0: use #334155 (modern dark gray)
+            - If delta < 0: use self.expenses_color
             """
-            return ['black' if v >= 0 else self.expenses_color for v in values]
+            return ['#334155' if v >= 0 else self.expenses_color for v in values]
 
         # -----------------------------
         # 2. Prepare Data
@@ -873,9 +937,21 @@ class ReportGenerator:
         # -----------------------------
         # 4. Calculate Mean Deltas
         # -----------------------------
-        mean_delta_income = delta_income.mean() if not delta_income.empty else 0
+        mean_delta_income = round(delta_income.mean()) if not delta_income.empty else 0
         mean_delta_income_support = (
-            delta_income_support.mean() if not delta_income_support.empty else 0
+            round(delta_income_support.mean()) if not delta_income_support.empty else 0
+        )
+
+        # Determine profit indicators
+        delta_income_icon = '↑' if mean_delta_income >= 0 else '↓'
+        delta_support_icon = '↑' if mean_delta_income_support >= 0 else '↓'
+
+        # Create enhanced subtitle with mean values
+        subtitle = (
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Avg Delta Income <b style="color: {self.income_color};">{delta_income_icon} {mean_delta_income:,}€</b>  •  '
+            f'Avg Delta Income+Support <b style="color: {self.income_and_support_color};">{delta_support_icon} {mean_delta_income_support:,}€</b>'
+            f'</span>'
         )
 
         # -----------------------------
@@ -886,55 +962,75 @@ class ReportGenerator:
         # Define the x-range for the mean lines
         full_x_range = [dataset['Month'].min(), dataset['Month'].max()]
 
-        # (a) Mean Delta (Income) line
-        fig.add_trace(
-            go.Scatter(
-                x=full_x_range,
-                y=[mean_delta_income, mean_delta_income],
-                mode='lines',
-                line=dict(color=darken_color(self.income_color), dash='dot'),
-                name='Mean Delta (Income)',
-                visible='legendonly',  # hidden by default
-            )
-        )
-
-        # (b) Mean Delta (Income+Support) line
-        fig.add_trace(
-            go.Scatter(
-                x=full_x_range,
-                y=[mean_delta_income_support, mean_delta_income_support],
-                mode='lines',
-                line=dict(color=darken_color(self.income_and_support_color), dash='dot'),
-                name='Mean Delta (Income + Support)',
-                visible='legendonly',  # hidden by default
-            )
-        )
-
-        # (c) Delta (Income) Bars
+        # (a) Delta (Income) Bars
         fig.add_trace(
             go.Bar(
                 x=income_df['Month'],
                 y=delta_income,
                 text=delta_income.apply(lambda x: f'{x:,.0f}€'),
                 textposition='outside',
+                textfont={'size': 11, 'family': 'Inter, sans-serif'},
                 marker_color=self.income_color_translucent,
                 name='Delta (Income)',
-                insidetextfont=dict(color=get_text_color(delta_income)),
-                outsidetextfont=dict(color=get_text_color(delta_income)),
+                insidetextfont={
+                    'color': get_text_color(delta_income),
+                    'family': 'Inter, sans-serif',
+                },
+                outsidetextfont={
+                    'color': get_text_color(delta_income),
+                    'family': 'Inter, sans-serif',
+                },
+                hovertemplate='<b>Delta (Income)</b><br>%{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
-        # (d) Delta (Income + Support) Bars
+        # (b) Delta (Income + Support) Bars
         fig.add_trace(
             go.Bar(
                 x=income_and_support_df['Month'],
                 y=delta_income_support,
                 text=delta_income_support.apply(lambda x: f'{x:,.0f}€'),
                 textposition='outside',
+                textfont={'size': 11, 'family': 'Inter, sans-serif'},
                 marker_color=self.income_and_support_color_translucent,
                 name='Delta (Income + Support)',
-                insidetextfont=dict(color=get_text_color(delta_income_support)),
-                outsidetextfont=dict(color=get_text_color(delta_income_support)),
+                insidetextfont={
+                    'color': get_text_color(delta_income_support),
+                    'family': 'Inter, sans-serif',
+                },
+                outsidetextfont={
+                    'color': get_text_color(delta_income_support),
+                    'family': 'Inter, sans-serif',
+                },
+                hovertemplate='<b>Delta (Income + Support)</b><br>%{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
+                visible='legendonly',  # hidden by default
+            )
+        )
+
+        # (c) Mean Delta (Income) line
+        fig.add_trace(
+            go.Scatter(
+                x=full_x_range,
+                y=[mean_delta_income, mean_delta_income],
+                mode='lines',
+                line={'color': self.income_color, 'width': 2, 'dash': 'dot'},
+                name='Mean Delta (Income)',
+                hovertemplate='<b>Mean Delta (Income):</b> €%{y:,.0f}<extra></extra>',
+                opacity=0.5,
+                visible='legendonly',  # hidden by default
+            )
+        )
+
+        # (d) Mean Delta (Income+Support) line
+        fig.add_trace(
+            go.Scatter(
+                x=full_x_range,
+                y=[mean_delta_income_support, mean_delta_income_support],
+                mode='lines',
+                line={'color': self.income_and_support_color, 'width': 2, 'dash': 'dot'},
+                name='Mean Delta (Income + Support)',
+                hovertemplate='<b>Mean Delta (Income + Support):</b> €%{y:,.0f}<extra></extra>',
+                opacity=0.5,
                 visible='legendonly',  # hidden by default
             )
         )
@@ -942,26 +1038,69 @@ class ReportGenerator:
         # -----------------------------
         # 6. Final Figure Layout
         # -----------------------------
-        title = (
-            f'Monthly Delta between Income (Income+Support) and Expenses<br><sub>'
-            f'Average Delta (Income): {mean_delta_income:.2f}€<br>'
-            f'Average Delta (Income + Support): {mean_delta_income_support:.2f}€</sub>'
-        )
-
+        # Modern layout configuration
         fig.update_layout(
-            title=title,
+            title={
+                'text': f'<b>Monthly Delta Overview</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
             barmode='group',
             width=1980,
             height=800,
-            xaxis_title='Month',
-            yaxis_title='Delta Amount (€)',
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-            margin=dict(t=160),  # Increase top margin for the multi-line title
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 80, 'l': 80, 'r': 80},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            legend={
+                'orientation': 'h',
+                'yanchor': 'bottom',
+                'y': 1.02,
+                'xanchor': 'center',
+                'x': 0.5,
+                'font': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'bgcolor': 'rgba(255, 255, 255, 0.8)',
+            },
+            hovermode='x unified',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
         )
 
-        # Update x-axis ticks
+        # Modern axis styling
         months_list = sorted(set(dataset['Month']))
-        fig.update_xaxes(tickvals=months_list, tickmode='array', tickformat='%b %Y')
+        fig.update_xaxes(
+            tickvals=months_list,
+            tickmode='array',
+            tickformat='%b %Y',
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            title={'text': 'Month', 'font': {'size': 12, 'color': '#64748b'}},
+        )
+
+        fig.update_yaxes(
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            tickformat=',.0f',
+            title={'text': 'Delta Amount (€)', 'font': {'size': 12, 'color': '#64748b'}},
+        )
 
         # Rotate labels if more than 12 months
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
@@ -1026,6 +1165,26 @@ class ReportGenerator:
             round(expenses_df['Amount Cumulative']).astype(int).astype(str) + '€'
         )
 
+        # Calculate final cumulative values for subtitle
+        final_income = round(income_df['Amount Cumulative'].iloc[-1]) if not income_df.empty else 0
+        final_income_support = (
+            round(income_and_support_df['Amount Cumulative'].iloc[-1])
+            if not income_and_support_df.empty
+            else 0
+        )
+        final_expenses = (
+            round(expenses_df['Amount Cumulative'].iloc[-1]) if not expenses_df.empty else 0
+        )
+
+        # Create enhanced subtitle with final cumulative values
+        subtitle = (
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Total Income <b style="color: {self.income_color};">{final_income:,}€</b>  •  '
+            f'Total Income+Support <b style="color: {self.income_and_support_color};">{final_income_support:,}€</b>  •  '
+            f'Total Expenses <b style="color: {self.expenses_color};">{final_expenses:,}€</b>'
+            f'</span>'
+        )
+
         # create plot
         fig = go.Figure()
 
@@ -1038,8 +1197,14 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income',
                 textposition='top center',
-                line=dict(color=self.income_color),
-                hovertemplate='Cumulative Income up to <b>%{x}</b>: %{y}€',
+                textfont={'size': 11, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                line={'color': self.income_color, 'width': 3},
+                marker={
+                    'size': 8,
+                    'color': self.income_color,
+                    'line': {'color': 'white', 'width': 2},
+                },
+                hovertemplate='<b>Cumulative Income</b><br>Up to %{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
@@ -1052,8 +1217,14 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Income + Support',
                 textposition='top center',
-                line=dict(color=self.income_and_support_color),
-                hovertemplate='Cumulative Income+Support up to <b>%{x}</b>: %{y}€',
+                textfont={'size': 11, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                line={'color': self.income_and_support_color, 'width': 3},
+                marker={
+                    'size': 8,
+                    'color': self.income_and_support_color,
+                    'line': {'color': 'white', 'width': 2},
+                },
+                hovertemplate='<b>Cumulative Income + Support</b><br>Up to %{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
@@ -1066,28 +1237,82 @@ class ReportGenerator:
                 mode='lines+markers+text',
                 name='Expenses',
                 textposition='top center',
-                line=dict(color=self.expenses_color),
-                hovertemplate='Cumulative Expenses up to <b>%{x}</b>: %{y}€',
+                textfont={'size': 11, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                line={'color': self.expenses_color, 'width': 3},
+                marker={
+                    'size': 8,
+                    'color': self.expenses_color,
+                    'line': {'color': 'white', 'width': 2},
+                },
+                hovertemplate='<b>Cumulative Expenses</b><br>Up to %{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
+        # Modern layout configuration
         fig.update_layout(
-            title='Income (Income+Support) and Expenses<br><sub>Cumulative Report</sub>',
+            title={
+                'text': f'<b>Cumulative Income & Expenses Overview</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
             width=1980,
             height=800,
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 80, 'l': 80, 'r': 80},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            legend={
+                'orientation': 'h',
+                'yanchor': 'bottom',
+                'y': 1.02,
+                'xanchor': 'center',
+                'x': 0.5,
+                'font': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'bgcolor': 'rgba(255, 255, 255, 0.8)',
+            },
+            hovermode='x unified',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
         )
 
+        # Modern axis styling
         months_list = sorted(set(dataset['Month']))
         fig.update_xaxes(
-            tickvals=months_list,  # list of all months
-            tickmode='array',  # use provided tick values as coordinates
-            tickformat='%b %Y',  # custom date format
+            tickvals=months_list,
+            tickmode='array',
+            tickformat='%b %Y',
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+        )
+
+        fig.update_yaxes(
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            tickformat=',.0f',
+            title={'text': 'Cumulative Amount (€)', 'font': {'size': 12, 'color': '#64748b'}},
         )
 
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
             fig.update_xaxes(
-                tickangle=-30,  # rotate labels
+                tickangle=-30,
             )
 
         return fig
@@ -1113,8 +1338,16 @@ class ReportGenerator:
         fig : plotly.graph_objs._figure.Figure
             A Plotly figure containing the cumulative delta bar plot.
         """
+
         # -----------------------------
-        # 1. Prepare Data
+        # 1. Helper Functions
+        # -----------------------------
+        def get_text_color(values):
+            """Determine text color for bar labels."""
+            return ['#334155' if v >= 0 else self.expenses_color for v in values]
+
+        # -----------------------------
+        # 2. Prepare Data
         # -----------------------------
         # (a) Income excluding 'Supporto Famiglia'
         income_df = (
@@ -1144,7 +1377,7 @@ class ReportGenerator:
         )
 
         # -----------------------------
-        # 2. Merge & Compute Monthly Deltas
+        # 3. Merge & Compute Monthly Deltas
         # -----------------------------
         # Merge Income (excl. support) with Expenses
         merged_income_expenses = income_df.merge(
@@ -1170,11 +1403,8 @@ class ReportGenerator:
         )
 
         # -----------------------------
-        # 3. Compute Cumulative Deltas
+        # 4. Compute Cumulative Deltas
         # -----------------------------
-        # We use the same Month ordering as the merged DataFrames
-        # (if Month is datetime, consider sorting; if it's integer/string,
-        #  you might still want to sort before cumsum).
         merged_income_expenses.sort_values('Month', inplace=True)  # noqa
         merged_income_support_expenses.sort_values('Month', inplace=True)  # noqa
 
@@ -1182,18 +1412,33 @@ class ReportGenerator:
         delta_income_support_cumulative = monthly_delta_income_support.cumsum()
 
         # -----------------------------
-        # 4. Compute Averages (Non-Cumulative)
+        # 5. Compute Metrics
         # -----------------------------
-        avg_delta_income = monthly_delta_income.mean() if not monthly_delta_income.empty else 0
-        avg_delta_income_support = (
-            monthly_delta_income_support.mean() if not monthly_delta_income_support.empty else 0
+        avg_delta_income = (
+            round(monthly_delta_income.mean()) if not monthly_delta_income.empty else 0
         )
 
-        # -----------------------------
-        # 5. Helper for Text Colors
-        # -----------------------------
-        def get_text_color(values):
-            return ['black' if v >= 0 else self.expenses_color for v in values]
+        final_cumulative_income = (
+            round(delta_income_cumulative.iloc[-1]) if not delta_income_cumulative.empty else 0
+        )
+        final_cumulative_support = (
+            round(delta_income_support_cumulative.iloc[-1])
+            if not delta_income_support_cumulative.empty
+            else 0
+        )
+
+        # Determine profit indicators
+        delta_income_icon = '↑' if final_cumulative_income >= 0 else '↓'
+        delta_support_icon = '↑' if final_cumulative_support >= 0 else '↓'
+
+        # Create enhanced subtitle
+        subtitle = (
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Final Cumulative Delta Income <b style="color: {self.income_color};">{delta_income_icon} {final_cumulative_income:,}€</b>  •  '
+            f'Avg Monthly Delta <b style="color: {self.income_color};">{avg_delta_income:,}€</b>  •  '
+            f'Final Cumulative Delta Income+Support <b style="color: {self.income_and_support_color};">{delta_support_icon} {final_cumulative_support:,}€</b>'
+            f'</span>'
+        )
 
         # -----------------------------
         # 6. Build Plotly Figure
@@ -1207,10 +1452,18 @@ class ReportGenerator:
                 y=delta_income_cumulative,
                 text=delta_income_cumulative.apply(lambda x: f'{x:,.0f}€'),
                 textposition='outside',
+                textfont={'size': 11, 'family': 'Inter, sans-serif'},
                 marker_color=self.income_color_translucent,
                 name='Cumulative Delta (Income)',
-                insidetextfont=dict(color=get_text_color(delta_income_cumulative)),
-                outsidetextfont=dict(color=get_text_color(delta_income_cumulative)),
+                insidetextfont={
+                    'color': get_text_color(delta_income_cumulative),
+                    'family': 'Inter, sans-serif',
+                },
+                outsidetextfont={
+                    'color': get_text_color(delta_income_cumulative),
+                    'family': 'Inter, sans-serif',
+                },
+                hovertemplate='<b>Cumulative Delta (Income)</b><br>%{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
@@ -1221,37 +1474,88 @@ class ReportGenerator:
                 y=delta_income_support_cumulative,
                 text=delta_income_support_cumulative.apply(lambda x: f'{x:,.0f}€'),
                 textposition='outside',
-                marker_color=self.income_and_support_color,
+                textfont={'size': 11, 'family': 'Inter, sans-serif'},
+                marker_color=self.income_and_support_color_translucent,
                 name='Cumulative Delta (Income + Support)',
                 visible='legendonly',  # Initially hidden
-                insidetextfont=dict(color=get_text_color(delta_income_support_cumulative)),
-                outsidetextfont=dict(color=get_text_color(delta_income_support_cumulative)),
+                insidetextfont={
+                    'color': get_text_color(delta_income_support_cumulative),
+                    'family': 'Inter, sans-serif',
+                },
+                outsidetextfont={
+                    'color': get_text_color(delta_income_support_cumulative),
+                    'family': 'Inter, sans-serif',
+                },
+                hovertemplate='<b>Cumulative Delta (Income + Support)</b><br>%{x|%b %Y}: <b>€%{y:,.0f}</b><extra></extra>',
             )
         )
 
         # -----------------------------
         # 7. Layout & Aesthetics
         # -----------------------------
-        title_str = (
-            'Cumulative Monthly Delta: Income vs. Expenses<br>'
-            f'<sub>Average Delta (Income): {avg_delta_income:,.2f}€<br>'
-            f'Average Delta (Income + Support): {avg_delta_income_support:,.2f}€</sub>'
-        )
-
+        # Modern layout configuration
         fig.update_layout(
-            title=title_str,
+            title={
+                'text': f'<b>Cumulative Monthly Delta Overview</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
             barmode='group',
             width=1980,
             height=800,
-            xaxis_title='Month',
-            yaxis_title='Cumulative Delta Amount (€)',
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-            margin=dict(t=160),  # extra top margin for multi-line title
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 80, 'l': 80, 'r': 80},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            legend={
+                'orientation': 'h',
+                'yanchor': 'bottom',
+                'y': 1.02,
+                'xanchor': 'center',
+                'x': 0.5,
+                'font': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'bgcolor': 'rgba(255, 255, 255, 0.8)',
+            },
+            hovermode='x unified',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
         )
 
-        # Update x-axis ticks
+        # Modern axis styling
         months_list = sorted(set(dataset['Month']))
-        fig.update_xaxes(tickvals=months_list, tickmode='array', tickformat='%b %Y')
+        fig.update_xaxes(
+            tickvals=months_list,
+            tickmode='array',
+            tickformat='%b %Y',
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            title={'text': 'Month', 'font': {'size': 12, 'color': '#64748b'}},
+        )
+
+        fig.update_yaxes(
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            tickformat=',.0f',
+            title={'text': 'Cumulative Delta Amount (€)', 'font': {'size': 12, 'color': '#64748b'}},
+        )
 
         # Rotate labels if more than 12 months
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
@@ -1323,9 +1627,15 @@ class ReportGenerator:
         income_max = round(
             max(dataset.groupby(['Month']).agg({'Amount': 'sum'}).reset_index()['Amount'])
         )
+
+        # Create enhanced subtitle with modern styling
         subtitle = (
-            f'<br><sub>Total Income: {income_total}€'
-            f'<br>Min: {income_min}€, Max: {income_max}€, Mean: {income_mean}€</sub>'
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Total <b style="color: {self.income_color};">{income_total:,}€</b>  •  '
+            f'Min <b style="color: {self.income_color};">{income_min:,}€</b>  •  '
+            f'Max <b style="color: {self.income_color};">{income_max:,}€</b>  •  '
+            f'Avg <b style="color: {self.income_color};">{income_mean:,}€</b>'
+            f'</span>'
         )
 
         fig = go.Figure()
@@ -1363,13 +1673,14 @@ class ReportGenerator:
                     x=df_category['Month'],
                     y=df_category['Amount'],
                     mode='lines+markers+text',
-                    line=dict(width=0.5, color=color),
+                    line={'width': 0.5, 'color': color},
                     stackgroup='one',
                     name=category,
                     text=text,
                     textposition='top center',
+                    textfont={'size': 10, 'family': 'Inter, sans-serif'},
                     hovertext=df_category['Notes'],
-                    hovertemplate=f'<b>{category}</b>: ' + '%{y}€<br><br>%{hovertext}',
+                    hovertemplate='<b>%{fullData.name}</b><br>€%{y:,.0f}<br><br>%{hovertext}<br>. . . . . . . . . . . . . . . . . . . . . . . .<extra></extra>',
                 )
             )
 
@@ -1379,35 +1690,88 @@ class ReportGenerator:
                 x=expenses_df['Month'],
                 y=expenses_df['Amount'],
                 hovertext=expenses_df['Amount_label'],
-                mode='lines+markers+text',
-                name='Spese',
-                textposition='top center',
-                line=dict(color=self.expenses_color_translucent, dash='dot'),
-                hovertemplate='Total Expenses of <b>%{x}</b>: %{y}€',
+                mode='lines+markers',
+                name='Expenses',
+                line={'color': self.expenses_color, 'width': 2, 'dash': 'dot'},
+                marker={
+                    'size': 6,
+                    'color': self.expenses_color,
+                },
+                hovertemplate='<b>%{fullData.name}</b><br>€%{y:,.0f}<br>. . . . . . . . . . . . . . . . . . . . . . . .<extra></extra>',
             )
         )
 
+        # Modern layout configuration
         fig.update_layout(
-            title=f'Income by Month{subtitle}',
+            title={
+                'text': f'<b>Income by Month Overview</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
             width=1980,
             height=800,
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-            margin=dict(t=160),  # Increase top margin for padding
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 80, 'l': 80, 'r': 80},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            legend={
+                'orientation': 'h',
+                'yanchor': 'bottom',
+                'y': 1.02,
+                'xanchor': 'center',
+                'x': 0.5,
+                'font': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'bgcolor': 'rgba(255, 255, 255, 0.8)',
+            },
+            hovermode='x unified',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
+            xaxis={
+                'hoverformat': '<b style="font-size: 15px;">%b %Y</b><br>',
+            },
         )
 
         # update the x-axis range with the padding
         fig.update_xaxes(range=[min_date, max_date])
 
+        # Modern axis styling
         months_list = sorted(set(dataset['Month']))
         fig.update_xaxes(
-            tickvals=months_list,  # list of all months
-            tickmode='array',  # use provided tick values as coordinates
-            tickformat='%b %Y',  # custom date format
+            tickvals=months_list,
+            tickmode='array',
+            tickformat='%b %Y',
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+        )
+
+        fig.update_yaxes(
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            tickformat=',.0f',
+            title={'text': 'Amount (€)', 'font': {'size': 12, 'color': '#64748b'}},
         )
 
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
             fig.update_xaxes(
-                tickangle=-30,  # rotate labels
+                tickangle=-30,
             )
 
         return fig
@@ -1474,9 +1838,15 @@ class ReportGenerator:
         expenses_max = round(
             max(dataset.groupby(['Month']).agg({'Amount': 'sum'}).reset_index()['Amount'])
         )
+
+        # Create enhanced subtitle with modern styling
         subtitle = (
-            f'<br><sub>Total Expenses: {expenses_total}€<br>'
-            f'Min: {expenses_min}€, Max: {expenses_max}€, Mean: {expenses_mean}€</sub>'
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Total <b style="color: {self.expenses_color};">{expenses_total:,}€</b>  •  '
+            f'Min <b style="color: {self.expenses_color};">{expenses_min:,}€</b>  •  '
+            f'Max <b style="color: {self.expenses_color};">{expenses_max:,}€</b>  •  '
+            f'Avg <b style="color: {self.expenses_color};">{expenses_mean:,}€</b>'
+            f'</span>'
         )
 
         fig = go.Figure()
@@ -1508,255 +1878,83 @@ class ReportGenerator:
                     x=df_category['Month'],
                     y=df_category['Amount'],
                     mode='lines',
-                    line=dict(width=0.5, color=color),
+                    line={'width': 0.5, 'color': color},
                     stackgroup='one',
                     name=category,
                     hovertext=df_category['Notes'],
-                    hovertemplate=f'<b>{category}</b>: ' + '%{y}€<br><br>%{hovertext}',
+                    hovertemplate='<b>%{fullData.name}</b><br>€%{y:,.0f}<br><br>%{hovertext}<extra></extra>',
                 )
             )
 
+        # Modern layout configuration
         fig.update_layout(
-            title=f'Expenses by Month{subtitle}',
+            title={
+                'text': f'<b>Expenses by Month Overview</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
             width=1980,
             height=800,
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-            margin=dict(t=160),  # Increase top margin for padding
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 80, 'l': 80, 'r': 80},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            legend={
+                'orientation': 'h',
+                'yanchor': 'bottom',
+                'y': 1.02,
+                'xanchor': 'center',
+                'x': 0.5,
+                'font': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'bgcolor': 'rgba(255, 255, 255, 0.8)',
+            },
+            hovermode='closest',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
         )
 
         # update the x-axis range with the padding
         fig.update_xaxes(range=[min_date, max_date])
 
+        # Modern axis styling
         months_list = sorted(set(dataset['Month']))
         fig.update_xaxes(
-            tickvals=months_list,  # list of all months
-            tickmode='array',  # use provided tick values as coordinates
-            tickformat='%b %Y',  # custom date format
+            tickvals=months_list,
+            tickmode='array',
+            tickformat='%b %Y',
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+        )
+
+        fig.update_yaxes(
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            tickformat=',.0f',
+            title={'text': 'Amount (€)', 'font': {'size': 12, 'color': '#64748b'}},
         )
 
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
             fig.update_xaxes(
-                tickangle=-30,  # rotate labels
+                tickangle=-30,
             )
-
-        return fig
-
-    def plot_income_and_expenses_by_month(self, dataset):
-        """
-        Generate a fig. with dual pie charts representing income and expenses categorized by month.
-
-        This function preprocesses the given dataset to separate income and expenses, then creates a
-        pie chart for each month. Each pie chart shows the distribution of income or expenses across
-        different categories.
-
-        The function also calculates and displays the total income, expenses, and profit for each
-        month. A slider is added to the plot to navigate through different months.
-
-        Parameters
-        ----------
-        dataset : DataFrame
-            The dataset containing transaction data.
-            Expected columns include 'Transaction Type', 'Category', 'Amount', 'Month', 'Date', and
-            'Notes'.
-
-        Returns
-        -------
-        fig : plotly.graph_objs._figure.Figure
-            A plotly figure containing the dual pie charts for income and expenses by month.
-
-        Notes
-        -----
-        The pie charts are interactive, allowing the user to hover over sections to see detailed
-        notes about each category. The slider at the bottom of the plot facilitates the navigation
-        through different months, updating the pie charts and the displayed totals and profit
-        percentage for the selected month.
-
-        Examples
-        --------
-        >>> dataset = pd.read_csv('financial_data.csv')
-        >>> fig = plot_income_and_expenses_by_month(dataset)
-        >>> fig.show()
-        """
-        # preprocess dataset
-
-        income_df = dataset.copy()
-        income_df = income_df.loc[income_df['Transaction Type'] == 'Entrate']
-        income_df['Notes'] = income_df['Notes'].fillna('Non specificato')
-        income_df['Amount_str'] = income_df['Amount'].astype(str)
-        income_df['Notes'] = (
-            ' • '
-            + income_df['Date']
-            + ': '
-            + income_df['Notes']
-            + ' → '
-            + income_df['Amount_str']
-            + '€'
-        )
-
-        income_df = (
-            income_df.groupby(['Month', 'Category'])
-            .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
-            .reset_index()
-        )
-        income_df['Amount'] = round(income_df['Amount']).astype(int)
-
-        expenses_df = dataset.copy()
-        expenses_df = expenses_df.loc[expenses_df['Transaction Type'] == 'Spesa']
-        expenses_df['Notes'] = expenses_df['Notes'].fillna('Non specificato')
-        expenses_df['Amount_str'] = expenses_df['Amount'].astype(str)
-        expenses_df['Notes'] = (
-            ' • '
-            + expenses_df['Date']
-            + ': '
-            + expenses_df['Notes']
-            + ' → '
-            + expenses_df['Amount_str']
-            + '€'
-        )
-        expenses_df = (
-            expenses_df.groupby(['Month', 'Category'])
-            .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
-            .reset_index()
-        )
-        expenses_df['Amount'] = round(expenses_df['Amount']).astype(int)
-
-        # create dataviz
-
-        # get unique months for the slider steps
-        income_months = income_df['Month'].unique()
-        expenses_months = expenses_df['Month'].unique()
-
-        # create empty figure
-        fig = make_subplots(
-            rows=1, cols=2, subplot_titles=('', ''), specs=[[{'type': 'pie'}, {'type': 'pie'}]]
-        )
-
-        # loop over each month and create a pie chart
-        for month in income_months:
-            # income
-            df_month_income = income_df[income_df['Month'] == month]
-            fig.add_trace(
-                go.Pie(
-                    labels=df_month_income['Category'],
-                    values=df_month_income['Amount'],
-                    visible=False,
-                    name=month,
-                    hole=0.4,
-                    marker=dict(
-                        colors=[
-                            self.category_color_dict_expenses[cat]
-                            for cat in df_month_income['Category']
-                        ]
-                    ),
-                    textinfo='label+value',
-                    texttemplate='<b>%{label}</b><br>%{value}€',
-                    hovertext=df_month_income['Notes'],
-                    hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
-                    automargin=False,
-                    opacity=1,
-                ),
-                1,
-                1,
-            )
-
-            # expenses
-            df_month_expenses = expenses_df[expenses_df['Month'] == month]
-            fig.add_trace(
-                go.Pie(
-                    labels=df_month_expenses['Category'],
-                    values=df_month_expenses['Amount'],
-                    visible=False,
-                    name=month,
-                    hole=0.4,
-                    marker=dict(
-                        colors=[
-                            self.category_color_dict_expenses[cat]
-                            for cat in df_month_expenses['Category']
-                        ]
-                    ),
-                    textinfo='label+value',
-                    texttemplate='<b>%{label}</b> %{value}€',
-                    hovertext=df_month_expenses['Notes'],
-                    hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
-                    automargin=False,
-                    opacity=1,
-                ),
-                1,
-                2,
-            )
-
-        # make first trace visible
-        fig.data[0].visible = True
-        fig.data[1].visible = True
-
-        # create and add slider
-        steps = []
-        for i in list(range(len(income_months))):
-            # dynamic subtitle for info on total income and expenses of the month
-            df_temp = income_df[income_df['Month'] == income_months[i]]
-            tot_income = round(sum(df_temp['Amount']))
-            df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
-            tot_expenses = round(sum(df_temp['Amount']))
-            profit = tot_income - tot_expenses
-            profit_perc = round((profit / tot_income) * 100, 2)
-
-            # determine the color and sign of the profit value
-            if profit >= 0:
-                profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
-            else:
-                profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
-
-            subtitle = (
-                f'<br><br><sub>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: '
-                f'<b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
-            )
-
-            custom_label = pd.to_datetime(expenses_months[i]).strftime('%b %Y')
-            step = dict(
-                method='update',
-                args=[
-                    {'visible': [False] * len(fig.data)},
-                    {'title': f'Income and Expenses by Month{subtitle}'},
-                ],  # layout attribute
-                label=custom_label,  # set the name of each month
-            )
-            idx_1 = 2 * i
-            idx_2 = 2 * i + 1
-            step['args'][0]['visible'][idx_1] = True
-            step['args'][0]['visible'][idx_2] = True
-            steps.append(step)
-
-        sliders = [
-            dict(active=0, currentvalue={'prefix': 'Month: '}, pad={'t': 90, 'b': 0}, steps=steps)
-        ]
-
-        # dynamic subtitle for info on total income and expenses of first month
-        df_temp = income_df[income_df['Month'] == income_months[0]]
-        tot_income = round(sum(df_temp['Amount']))
-        df_temp = expenses_df[expenses_df['Month'] == expenses_months[0]]
-        tot_expenses = round(sum(df_temp['Amount']))
-        profit = tot_income - tot_expenses
-        profit_perc = round((profit / tot_income) * 100, 2)
-
-        # determine the color and sign of the profit value
-        if profit >= 0:
-            profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
-        else:
-            profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
-
-        subtitle = (
-            f'<br><br><sub>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: '
-            f'<b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
-        )
-
-        # add title, width, legend, ...
-        fig.update_layout(
-            sliders=sliders,
-            title=f'Income and Expenses by Month{subtitle}',
-            width=1980,
-            height=800,
-            showlegend=False,
-        )
 
         return fig
 
@@ -1990,8 +2188,11 @@ class ReportGenerator:
                 profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
 
             subtitle = (
-                f'<br><sub>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: '
-                f'<b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
+                f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+                f'Monthly Income <b style="color: {self.income_color};">{tot_income:,}€</b>  •  '
+                f'Monthly Expenses <b style="color: {self.expenses_color};">{tot_expenses:,}€</b>  •  '
+                f'Profit <b>{profit_str}</b> ({profit_perc}%)'
+                f'</span>'
             )
 
             custom_label = pd.to_datetime(income_months[i]).strftime('%b %Y')
@@ -2001,8 +2202,12 @@ class ReportGenerator:
                     {'visible': [False] * len(fig.data)},
                     {
                         'title': {
-                            'text': f'Income and Expenses by Month{subtitle}',
-                            'font': {'size': 20, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                            'text': f'<b>Income and Expenses by Month</b>{subtitle}',
+                            'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                            'x': 0.5,
+                            'xanchor': 'center',
+                            'y': 0.95,
+                            'yanchor': 'top',
                         },
                         'annotations': [
                             {
@@ -2065,16 +2270,23 @@ class ReportGenerator:
             profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
 
         subtitle = (
-            f'<br><sub>Monthly Income: <b>{tot_income}€</b><br>Monthly Expenses: '
-            f'<b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Monthly Income <b style="color: {self.income_color};">{tot_income:,}€</b>  •  '
+            f'Monthly Expenses <b style="color: {self.expenses_color};">{tot_expenses:,}€</b>  •  '
+            f'Profit <b>{profit_str}</b> ({profit_perc}%)'
+            f'</span>'
         )
 
         # Customize the layout with modern styling
         fig.update_layout(
             sliders=sliders,
             title={
-                'text': f'Income and Expenses by Month{subtitle}',
-                'font': {'size': 20, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'text': f'<b>Income and Expenses by Month</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
             },
             width=1980,
             height=800,
@@ -2097,7 +2309,7 @@ class ReportGenerator:
                     'xref': 'paper',
                     'yref': 'paper',
                     'x': 0.22,
-                    'y': 1.05,
+                    'y': 1.0,
                     'xanchor': 'center',
                     'yanchor': 'bottom',
                 },
@@ -2108,7 +2320,7 @@ class ReportGenerator:
                     'xref': 'paper',
                     'yref': 'paper',
                     'x': 0.78,
-                    'y': 1.05,
+                    'y': 1.0,
                     'xanchor': 'center',
                     'yanchor': 'bottom',
                 },
@@ -2163,67 +2375,113 @@ class ReportGenerator:
         # Create a bar plot using Graph Objects
         fig = go.Figure()
 
-        # Define a consistent text font size
-        text_font_size = 12  # You can adjust this size as needed
-
         # Calculate total transfers for each 'To' category
         total_transfers = dataset.groupby('To')['Amount'].sum()
+        grand_total = round(sum(total_transfers), 2)
 
-        # Subtitle text with total transfers
-        subtitle_text = (
-            f'<br><sub>Total Transfers: {round(sum(total_transfers), 2)}€ '
-            f'in {len(total_transfers)} account(s)</sub>'
+        # Create enhanced subtitle with modern styling
+        subtitle = (
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Total Transfers <b style="color: #334155;">{grand_total:,}€</b>  •  '
+            f'{len(total_transfers)} account(s)'
+            f'</span>'
         )
 
         # Add bars for each 'To' category
         categories = dataset['To'].unique()
         for category in categories:
             filtered_dataset = dataset[dataset['To'] == category]
+            category_total = total_transfers[category]
             fig.add_trace(
                 go.Bar(
                     x=filtered_dataset['Month'],
                     y=filtered_dataset['Amount'],
-                    name=f'<i>{category}</i><br>Total: {total_transfers[category]:.2f} €',
-                    text=filtered_dataset['Amount'],
+                    name=f'<b>{category}</b><br>{category_total:,.0f}€',
+                    text=filtered_dataset['Amount'].apply(lambda x: f'{x:,.0f}€'),
                     textposition='inside',
-                    textfont=dict(size=text_font_size),
+                    textfont={'size': 11, 'family': 'Inter, sans-serif', 'color': '#334155'},
                     hovertemplate=(
-                        '<b>Date:</b> %{x|%Y-%m}<br>'
+                        '<b>Date:</b> %{x|%b %Y}<br>'
                         '<b>From:</b> %{customdata[0]}<br>'
                         '<b>To:</b> %{customdata[1]}<br>'
-                        '<b>Amount:</b> %{y} €<br>'
+                        '<b>Amount:</b> €%{y:,.0f}<br>'
                         '<b>Notes:</b> %{customdata[2]}<extra></extra>'
                     ),
                     customdata=filtered_dataset[['From', 'To', 'Notes']].values,
-                    marker=dict(
-                        color=self.category_color_dict_transfers[category],
-                        line=dict(color='black', width=0.1),  # Add black border to each bar
-                    ),
+                    marker={
+                        'color': self.category_color_dict_transfers[category],
+                        'line': {'color': '#ffffff', 'width': 1},
+                    },
                 )
             )
 
-        # Customize the layout
+        # Modern layout configuration
         fig.update_layout(
-            title=f'Money Transfers from Primary Account{subtitle_text}',
-            xaxis_title='Date',
-            yaxis_title='Amount (€)',
+            title={
+                'text': f'<b>Money Transfers from Primary Account</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
             barmode='stack',
             width=1980,
             height=800,
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 80, 'l': 80, 'r': 80},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            legend={
+                'orientation': 'h',
+                'yanchor': 'bottom',
+                'y': 1.02,
+                'xanchor': 'center',
+                'x': 0.5,
+                'font': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                'bgcolor': 'rgba(255, 255, 255, 0.8)',
+            },
+            hovermode='closest',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
         )
 
+        # Modern axis styling
         months_list = sorted(set(dataset['Month']))
         months_list = self.__fill_month_gaps(months_list)
         fig.update_xaxes(
-            tickvals=months_list,  # list of all months
-            tickmode='array',  # use provided tick values as coordinates
-            tickformat='%b %Y',  # custom date format
+            tickvals=months_list,
+            tickmode='array',
+            tickformat='%b %Y',
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+        )
+
+        fig.update_yaxes(
+            tickfont={'size': 11, 'color': '#64748b', 'family': 'Inter, sans-serif'},
+            showgrid=True,
+            gridcolor='#f1f5f9',
+            gridwidth=1,
+            showline=True,
+            linecolor='#cbd5e1',
+            linewidth=1,
+            tickformat=',.0f',
+            title={'text': 'Amount (€)', 'font': {'size': 12, 'color': '#64748b'}},
         )
 
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
             fig.update_xaxes(
-                tickangle=-30,  # rotate labels
+                tickangle=-30,
             )
 
         return fig
