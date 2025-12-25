@@ -1,10 +1,12 @@
 """ReportGenerator."""
 
 # ⚙️ Ruff Settings
-# ruff: noqa: PTH100 PTH103 PTH110 PTH118 PTH120 PTH123 C408
+# ruff: noqa: PTH100 PTH103 PTH110 PTH118 PTH120 PTH123 C408 E501
 
 # Libraries
 import os
+import re
+from textwrap import shorten
 
 import numpy as np
 import pandas as pd
@@ -54,7 +56,7 @@ class ReportGenerator:
 
     # MAIN FUNCTION
 
-    def generate_reports(self, show_plots=False):
+    def generate_reports(self, *, show_plots=False):
         """Generate and save financial reports.
 
         Generate and save financial reports including various plots such as spider plots, treemaps,
@@ -179,22 +181,10 @@ class ReportGenerator:
 
     def plot_yearly_spyderplot(self, dataset):
         """
-        Generate a Plotly figure representing yearly income, grouped by category, as a spyder plot.
+        Generate a Plotly figure representing yearly income, grouped by category, as a spider plot.
 
-        This function preprocesses the input DataFrame to extract income-relevant data.
-        It then generates a spyder (radar) plot, showing the total amount of income for each
-        category.
-
-        Parameters
-        ----------
-        dataset : pd.DataFrame
-            The input DataFrame containing financial transaction data.
-            It should include the following columns: 'Transaction Type', 'Category', 'Amount'.
-
-        Returns
-        -------
-        plotly.graph_objs._figure.Figure
-            A Plotly figure representing the yearly income by category in a spyder plot.
+        This function creates a contemporary-styled radar plot with improved visual design,
+        including gradients, better typography, and enhanced interactivity.
         """
         dataset_income = dataset.copy()
         dataset_income = dataset_income.loc[dataset_income['Transaction Type'] == 'Entrate']
@@ -208,85 +198,189 @@ class ReportGenerator:
         )
         dataset_expenses['Amount'] = round(dataset_expenses['Amount']).astype(int)
 
-        fig = make_subplots(rows=1, cols=2, specs=[[{'type': 'polar'}] * 2] * 1)
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            specs=[[{'type': 'polar'}] * 2],
+            subplot_titles=('Income by Category', 'Expenses by Category'),
+            horizontal_spacing=0.15,
+        )
 
-        # additional info
+        # Calculate financial metrics
         income_total = round(sum(dataset_income['Amount']))
         expenses_total = round(sum(dataset_expenses['Amount']))
         profit = income_total - expenses_total
 
-        # handle case in which income_total is 0
         if income_total == 0:
             income_total = 1
         profit_perc = round((profit / income_total) * 100, 2)
 
-        # determine the color and sign of the profit value
-        if profit >= 0:
-            profit_str = f'<span style="color: {self.income_color};">{profit}€</span>'
-        else:
-            profit_str = f'<span style="color: {self.expenses_color};">{profit}€</span>'
+        # Use original color palette
+        income_color = self.income_color
+        expenses_color = self.expenses_color
 
+        # Determine profit color and styling
+        if profit >= 0:
+            profit_color = income_color
+            profit_icon = '↑'
+        else:
+            profit_color = expenses_color
+            profit_icon = '↓'
+
+        # Create enhanced subtitle with modern styling
         subtitle = (
-            f'<br><sub>Total Income: <b>{income_total}€</b><br>Total Expenses: '
-            f'<b>{expenses_total}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
+            f'<br><span style="font-size: 14px; color: #64748b; font-weight: 400;">'
+            f'Income <b style="color: {income_color};">{income_total:,}€</b>  •  '
+            f'Expenses <b style="color: {expenses_color};">{expenses_total:,}€</b>  •  '
+            f'Net <b style="color: {profit_color};">{profit_icon} {profit:,}€</b> '
+            f'<span style="color: #94a3b8;">({profit_perc:+.1f}%)</span>'
+            f'</span>'
         )
 
-        theta_with_amount = [
-            f'<b>{category}</b><br>{amount}€'
+        # Income trace with enhanced styling
+        theta_income = [
+            f'{category}<br><span style="font-size: 11px; color: #64748b;">{amount:,}€</span>'
             for category, amount in zip(
-                list(dataset_income['Category']), list(dataset_income['Amount'])
+                list(dataset_income['Category']),
+                list(dataset_income['Amount']),
+                strict=True,
             )
         ]
+
         fig.add_trace(
             go.Scatterpolar(
                 r=list(dataset_income['Amount']),
-                theta=theta_with_amount,  # list(dataset_income['Category']),
-                mode='markers+text',
+                theta=theta_income,
+                mode='lines+markers',
                 name='Income',
                 fill='toself',
-                hoverinfo='r',
-                hovertemplate='Income by %{theta}',
-                line={'color': self.income_color},
+                line={'color': income_color, 'width': 3, 'shape': 'spline'},
+                marker={
+                    'size': 8,
+                    'color': income_color,
+                    'line': {'color': 'white', 'width': 2},
+                    'symbol': 'circle',
+                },
+                hovertemplate=('<b>%{theta}</b><extra></extra>'),
             ),
             row=1,
             col=1,
         )
 
-        theta_with_amount = [
-            f'<b>{category}</b><br>{amount}€'
+        # Expenses trace with enhanced styling
+        theta_expenses = [
+            f'{category}<br><span style="font-size: 11px; color: #64748b;">{amount:,}€</span>'
             for category, amount in zip(
-                list(dataset_expenses['Category']), list(dataset_expenses['Amount'])
+                list(dataset_expenses['Category']),
+                list(dataset_expenses['Amount']),
+                strict=True,
             )
         ]
+
         fig.add_trace(
             go.Scatterpolar(
                 r=list(dataset_expenses['Amount']),
-                theta=theta_with_amount,
-                mode='markers+text',
+                theta=theta_expenses,
+                mode='lines+markers',
                 name='Expenses',
                 fill='toself',
-                hoverinfo='r',
-                hovertemplate='Expenses by %{theta}',
-                line={'color': self.expenses_color},
+                line={'color': expenses_color, 'width': 3, 'shape': 'spline'},
+                marker={
+                    'size': 8,
+                    'color': expenses_color,
+                    'line': {'color': 'white', 'width': 2},
+                    'symbol': 'circle',
+                },
+                hovertemplate=('<b>%{theta}</b><br>Amount: €%{r:,.0f}<br><extra></extra>'),
             ),
             row=1,
             col=2,
         )
 
+        # Modern layout configuration
         fig.update_layout(
+            # Polar chart 1 (Income)
             polar1={
-                'radialaxis': {'visible': True},
-                'angularaxis': {'tickfont': {'size': 12}},
+                'radialaxis': {
+                    'visible': True,
+                    'showline': False,
+                    'gridcolor': '#e2e8f0',
+                    'gridwidth': 1,
+                    'tickfont': {'size': 11, 'color': '#94a3b8'},
+                    'tickformat': ',.0f',
+                },
+                'angularaxis': {
+                    'tickfont': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                    'gridcolor': '#e2e8f0',
+                    'linecolor': '#cbd5e1',
+                },
+                'bgcolor': '#ffffff',
             },
+            # Polar chart 2 (Expenses)
             polar2={
-                'radialaxis': {'visible': True},
-                'angularaxis': {'tickfont': {'size': 12}},
+                'radialaxis': {
+                    'visible': True,
+                    'showline': False,
+                    'gridcolor': '#e2e8f0',
+                    'gridwidth': 1,
+                    'tickfont': {'size': 11, 'color': '#94a3b8'},
+                    'tickformat': ',.0f',
+                },
+                'angularaxis': {
+                    'tickfont': {'size': 12, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                    'gridcolor': '#e2e8f0',
+                    'linecolor': '#cbd5e1',
+                },
+                'bgcolor': '#ffffff',
             },
+            # Overall layout
             showlegend=False,
             width=1980,
-            height=600,
-            title=f'Yearly Income and Expenses by Category{subtitle}',
-            margin={'t': 160},  # Increase top margin for padding
+            height=700,
+            title={
+                'text': f'<b>Yearly Financial Overview</b>{subtitle}',
+                'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter, sans-serif'},
+                'x': 0.5,
+                'xanchor': 'center',
+                'y': 0.95,
+                'yanchor': 'top',
+            },
+            paper_bgcolor='#ffffff',
+            margin={'t': 180, 'b': 60, 'l': 60, 'r': 60},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            hovermode='closest',
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
+            # Add subtle annotations for subplot titles
+            annotations=[
+                {
+                    'text': '<b>Income by Category</b>',
+                    'font': {'size': 16, 'color': '#334155'},
+                    'showarrow': False,
+                    'xref': 'paper',
+                    'yref': 'paper',
+                    'x': 0.22,
+                    'y': 1.1,
+                    'xanchor': 'center',
+                    'yanchor': 'bottom',
+                },
+                {
+                    'text': '<b>Expenses by Category</b>',
+                    'font': {'size': 16, 'color': '#334155'},
+                    'showarrow': False,
+                    'xref': 'paper',
+                    'yref': 'paper',
+                    'x': 0.79,
+                    'y': 1.1,
+                    'xanchor': 'center',
+                    'yanchor': 'bottom',
+                },
+            ],
         )
 
         return fig
@@ -294,6 +388,9 @@ class ReportGenerator:
     def plot_yearly_treemap(self, dataset):
         """
         Generate figures representing yearly income and expenses, grouped by category, as treemaps.
+
+        This function creates a modern side-by-side treemap visualization with enhanced styling
+        and improved interactivity.
 
         Parameters
         ----------
@@ -306,43 +403,125 @@ class ReportGenerator:
         plotly.graph_objs._figure.Figure
             A Plotly figure representing the yearly income and expenses by category in treemaps.
         """
+
+        def remove_emojis(text):
+            """Remove emojis from a string."""
+            if not isinstance(text, str):
+                return text
+            emoji_pattern = re.compile(
+                '['
+                '\U0001f600-\U0001f64f'  # emoticons
+                '\U0001f300-\U0001f5ff'  # symbols & pictographs
+                '\U0001f680-\U0001f6ff'  # transport & map symbols
+                '\U0001f1e0-\U0001f1ff'  # flags (iOS)
+                '\U00002702-\U000027b0'
+                '\U000024c2-\U0001f251'
+                ']+',
+                flags=re.UNICODE,
+            )
+            return emoji_pattern.sub(r'', text)
+
+        # Process income and expenses data
+        dataset_income_copy = dataset.loc[dataset['Transaction Type'] == 'Entrate'].copy()
+        dataset_income_copy['Notes'] = (
+            dataset_income_copy['Notes'].fillna('Non specificato').apply(remove_emojis)
+        )
+        dataset_income_copy['Amount_display'] = dataset_income_copy['Amount'].apply(
+            lambda v: f'{v:,.2f}€'
+        )
+
+        dataset_expenses_copy = dataset.loc[dataset['Transaction Type'] == 'Spesa'].copy()
+        dataset_expenses_copy['Notes'] = (
+            dataset_expenses_copy['Notes'].fillna('Non specificato').apply(remove_emojis)
+        )
+        dataset_expenses_copy['Amount_display'] = dataset_expenses_copy['Amount'].apply(
+            lambda v: f'{v:,.2f}€'
+        )
+
+        # Determine optimal column widths for the hover table
+        all_notes = pd.concat(
+            [
+                dataset_income_copy.assign(
+                    Notes_short=lambda df: df['Notes'].apply(
+                        lambda s: shorten(s, 30, placeholder='...')
+                    )
+                ),
+                dataset_expenses_copy.assign(
+                    Notes_short=lambda df: df['Notes'].apply(
+                        lambda s: shorten(s, 30, placeholder='...')
+                    )
+                ),
+            ]
+        )
+
+        date_width = (
+            max(len('Date'), all_notes['Date'].str.len().max()) if not all_notes.empty else 10
+        )
+        note_width = (
+            max(len('Note'), all_notes['Notes_short'].str.len().max())
+            if not all_notes.empty
+            else 30
+        )
+        amount_width = (
+            max(len('Amount'), all_notes['Amount_display'].str.len().max())
+            if not all_notes.empty
+            else 10
+        )
+
+        def format_note_row(row):
+            note_text = shorten(str(row['Notes']), width=note_width, placeholder='...')
+            return (
+                f'{row["Date"]:<{date_width}} | '
+                f'{note_text:<{note_width}} | '
+                f'{row["Amount_display"]:>{amount_width}}'
+            )
+
+        def build_notes_block(rows):
+            header = f'{"Date":<{date_width}} | {"Note":<{note_width}} | {"Amount":>{amount_width}}'
+            divider = '-' * len(header)
+            if rows:
+                block_lines = [header, divider, *rows]
+            else:
+                placeholder = (
+                    f'{"-":<{date_width}} | {"No entries":<{note_width}} | {"-":>{amount_width}}'
+                )
+                block_lines = [header, divider, placeholder]
+            content = '<br>'.join(block_lines)
+            return (
+                '<span style="font-family: \'Courier New\', monospace; white-space: pre;">'
+                + content
+                + '</span>'
+            )
+
+        # Process income notes for hover display
+        dataset_income_copy['Notes_row'] = dataset_income_copy.apply(format_note_row, axis=1)
+        notes_income = (
+            dataset_income_copy.groupby('Category')['Notes_row']
+            .apply(lambda rows: build_notes_block(rows.tolist()))
+            .reset_index(name='Notes_hover')
+        )
+
+        # Process expenses notes for hover display
+        dataset_expenses_copy['Notes_row'] = dataset_expenses_copy.apply(format_note_row, axis=1)
+        notes_expenses = (
+            dataset_expenses_copy.groupby('Category')['Notes_row']
+            .apply(lambda rows: build_notes_block(rows.tolist()))
+            .reset_index(name='Notes_hover')
+        )
+
         # Income
         dataset_income = dataset.loc[dataset['Transaction Type'] == 'Entrate']
-        dataset_income['Notes'] = dataset_income['Notes'].fillna('Non specificato')
-        dataset_income['Amount_label'] = dataset_income['Amount'].astype(str) + '€'
-        dataset_income['Notes'] = (
-            ' • '
-            + dataset_income['Date']
-            + ': '
-            + dataset_income['Notes']
-            + ' → '
-            + dataset_income['Amount_label']
-        )
-        dataset_income = (
-            dataset_income.groupby(['Category'])
-            .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
-            .reset_index()
-        )
+        dataset_income = dataset_income.groupby(['Category']).agg({'Amount': 'sum'}).reset_index()
         dataset_income['Amount'] = round(dataset_income['Amount']).astype(int)
+        dataset_income = dataset_income.merge(notes_income, on='Category', how='left')
 
         # Expenses
         dataset_expenses = dataset.loc[dataset['Transaction Type'] == 'Spesa']
-        dataset_expenses['Notes'] = dataset_expenses['Notes'].fillna('Non specificato')
-        dataset_expenses['Amount_label'] = dataset_expenses['Amount'].astype(str) + '€'
-        dataset_expenses['Notes'] = (
-            ' • '
-            + dataset_expenses['Date']
-            + ': '
-            + dataset_expenses['Notes']
-            + ' → '
-            + dataset_expenses['Amount_label']
-        )
         dataset_expenses = (
-            dataset_expenses.groupby(['Category'])
-            .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
-            .reset_index()
+            dataset_expenses.groupby(['Category']).agg({'Amount': 'sum'}).reset_index()
         )
         dataset_expenses['Amount'] = round(dataset_expenses['Amount']).astype(int)
+        dataset_expenses = dataset_expenses.merge(notes_expenses, on='Category', how='left')
 
         # Function to get colors for categories
         def get_colors(data):
@@ -358,11 +537,16 @@ class ReportGenerator:
                 parents=[''] * len(dataset_income),
                 values=dataset_income['Amount'],
                 textinfo='label+text',
-                texttemplate='<b>%{label}</b><br>%{value} €',
+                texttemplate='<b>%{label}</b><br>%{value:,} €',
                 textposition='middle center',
-                marker_colors=get_colors(dataset_income),  # Set colors
-                domain={'x': [0, 0.48], 'y': [0, 1]},  # Set domain for left side
-                hoverinfo='none',  # Disable hover effect
+                textfont={'size': 14, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                marker={
+                    'colors': get_colors(dataset_income),
+                    'line': {'color': '#ffffff', 'width': 2},
+                },
+                domain={'x': [0, 0.48], 'y': [0, 1]},
+                customdata=dataset_income['Notes_hover'],
+                hovertemplate='<span style="font-family: \'Courier New\', monospace;"><b>%{label}</b><br>Total: €%{value:,.0f}</span><br><br>%{customdata}<extra></extra>',
             )
         )
 
@@ -372,24 +556,37 @@ class ReportGenerator:
                 parents=[''] * len(dataset_expenses),
                 values=dataset_expenses['Amount'],
                 textinfo='label+text',
-                texttemplate='<b>%{label}</b><br>%{value} €',
+                texttemplate='<b>%{label}</b><br>%{value:,} €',
                 textposition='middle center',
-                marker_colors=get_colors(dataset_expenses),  # Set colors
-                domain={'x': [0.52, 1], 'y': [0, 1]},  # Set domain for right side
-                hoverinfo='none',  # Disable hover effect
+                textfont={'size': 14, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                marker={
+                    'colors': get_colors(dataset_expenses),
+                    'line': {'color': '#ffffff', 'width': 2},
+                },
+                domain={'x': [0.52, 1], 'y': [0, 1]},
+                customdata=dataset_expenses['Notes_hover'],
+                hovertemplate='<span style="font-family: \'Courier New\', monospace;"><b>%{label}</b><br>Total: €%{value:,.0f}</span><br><br>%{customdata}<extra></extra>',
             )
         )
 
         # Create a single figure to display both treemaps side by side
         fig = go.Figure(data=[fig_income.data[0], fig_expenses.data[0]])
 
-        # Update layout
+        # Update layout with modern styling
         fig.update_layout(
-            title='',
             grid={'columns': 2, 'rows': 1},
             width=1980,
-            height=600,
-            margin={'t': 0},
+            height=700,
+            paper_bgcolor='#ffffff',
+            margin={'t': 80, 'b': 40, 'l': 40, 'r': 40},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
         )
 
         return fig
@@ -978,8 +1175,8 @@ class ReportGenerator:
         # We use the same Month ordering as the merged DataFrames
         # (if Month is datetime, consider sorting; if it's integer/string,
         #  you might still want to sort before cumsum).
-        merged_income_expenses.sort_values('Month', inplace=True)
-        merged_income_support_expenses.sort_values('Month', inplace=True)
+        merged_income_expenses.sort_values('Month', inplace=True)  # noqa
+        merged_income_support_expenses.sort_values('Month', inplace=True)  # noqa
 
         delta_income_cumulative = monthly_delta_income.cumsum()
         delta_income_support_cumulative = monthly_delta_income_support.cumsum()
@@ -1037,7 +1234,6 @@ class ReportGenerator:
         # -----------------------------
         title_str = (
             'Cumulative Monthly Delta: Income vs. Expenses<br>'
-            '(<i>Toggle Income+Support in legend</i>)<br>'
             f'<sub>Average Delta (Income): {avg_delta_income:,.2f}€<br>'
             f'Average Delta (Income + Support): {avg_delta_income_support:,.2f}€</sub>'
         )
@@ -1053,11 +1249,11 @@ class ReportGenerator:
             margin=dict(t=160),  # extra top margin for multi-line title
         )
 
-        # X-axis ticks
+        # Update x-axis ticks
         months_list = sorted(set(dataset['Month']))
         fig.update_xaxes(tickvals=months_list, tickmode='array', tickformat='%b %Y')
 
-        # Rotate if too many months
+        # Rotate labels if more than 12 months
         if len(months_list) > MONTHS_BEFORE_LABELS_ROTATION:
             fig.update_xaxes(tickangle=-30)
 
@@ -1158,7 +1354,7 @@ class ReportGenerator:
 
             # Do not display the value of "Amount" if it is 0
             text = [
-                f'{int(round(amount))}' if amount > MIN_AMOUNT_TO_DISPLAY else ''
+                f'{round(amount)}' if amount > MIN_AMOUNT_TO_DISPLAY else ''
                 for amount in df_category['Amount']
             ]
 
@@ -1245,7 +1441,7 @@ class ReportGenerator:
 
         Notes
         -----
-        The function uses the self.category_color_dict_expenses constant which should be a dictionary
+        The function uses the self.category_color_dict_expenses constant which should be a dict
         mapping each category to a specific color in hexadecimal form.
         """
         dataset = dataset.copy()
@@ -1498,9 +1694,9 @@ class ReportGenerator:
         for i in list(range(len(income_months))):
             # dynamic subtitle for info on total income and expenses of the month
             df_temp = income_df[income_df['Month'] == income_months[i]]
-            tot_income = int(round(sum(df_temp['Amount'])))
+            tot_income = round(sum(df_temp['Amount']))
             df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
-            tot_expenses = int(round(sum(df_temp['Amount'])))
+            tot_expenses = round(sum(df_temp['Amount']))
             profit = tot_income - tot_expenses
             profit_perc = round((profit / tot_income) * 100, 2)
 
@@ -1536,9 +1732,9 @@ class ReportGenerator:
 
         # dynamic subtitle for info on total income and expenses of first month
         df_temp = income_df[income_df['Month'] == income_months[0]]
-        tot_income = int(round(sum(df_temp['Amount'])))
+        tot_income = round(sum(df_temp['Amount']))
         df_temp = expenses_df[expenses_df['Month'] == expenses_months[0]]
-        tot_expenses = int(round(sum(df_temp['Amount'])))
+        tot_expenses = round(sum(df_temp['Amount']))
         profit = tot_income - tot_expenses
         profit_perc = round((profit / tot_income) * 100, 2)
 
@@ -1599,54 +1795,120 @@ class ReportGenerator:
         >>> fig = plot_income_and_expenses_by_month_treemap(dataset)
         >>> fig.show()
         """
+
+        def remove_emojis(text):
+            """Remove emojis from a string."""
+            if not isinstance(text, str):
+                return text
+            emoji_pattern = re.compile(
+                '['
+                '\U0001f600-\U0001f64f'  # emoticons
+                '\U0001f300-\U0001f5ff'  # symbols & pictographs
+                '\U0001f680-\U0001f6ff'  # transport & map symbols
+                '\U0001f1e0-\U0001f1ff'  # flags (iOS)
+                '\U00002702-\U000027b0'
+                '\U000024c2-\U0001f251'
+                ']+',
+                flags=re.UNICODE,
+            )
+            return emoji_pattern.sub(r'', text)
+
         # preprocess dataset
 
-        income_df = dataset.copy()
-        income_df = income_df.loc[income_df['Transaction Type'] == 'Entrate']
-        income_df['Notes'] = income_df['Notes'].fillna('Non specificato')
-        income_df['Amount_str'] = income_df['Amount'].astype(str)
-        income_df['Notes'] = (
-            ' • '
-            + income_df['Date']
-            + ': '
-            + income_df['Notes']
-            + ' → '
-            + income_df['Amount_str']
-            + '€'
+        income_df_raw = dataset.copy()
+        income_df_raw = income_df_raw.loc[income_df_raw['Transaction Type'] == 'Entrate']
+        income_df_raw['Notes'] = (
+            income_df_raw['Notes'].fillna('Non specificato').apply(remove_emojis)
+        )
+        income_df_raw['Amount_display'] = income_df_raw['Amount'].apply(lambda v: f'{v:,.2f}€')
+
+        expenses_df_raw = dataset.copy()
+        expenses_df_raw = expenses_df_raw.loc[expenses_df_raw['Transaction Type'] == 'Spesa']
+        expenses_df_raw['Notes'] = (
+            expenses_df_raw['Notes'].fillna('Non specificato').apply(remove_emojis)
+        )
+        expenses_df_raw['Amount_display'] = expenses_df_raw['Amount'].apply(lambda v: f'{v:,.2f}€')
+
+        # Determine optimal column widths for the hover table
+        all_notes = pd.concat([income_df_raw, expenses_df_raw])
+
+        date_width = (
+            max(len('Date'), all_notes['Date'].str.len().max()) if not all_notes.empty else 10
+        )
+        note_width = 30  # Fixed width for shortened notes
+        amount_width = (
+            max(len('Amount'), all_notes['Amount_display'].str.len().max())
+            if not all_notes.empty
+            else 10
         )
 
+        def format_note_row(row):
+            note_text = shorten(str(row['Notes']), width=note_width, placeholder='...')
+            return (
+                f'{row["Date"]:<{date_width}} | '
+                f'{note_text:<{note_width}} | '
+                f'{row["Amount_display"]:>{amount_width}}'
+            )
+
+        def build_notes_block(rows):
+            header = f'{"Date":<{date_width}} | {"Note":<{note_width}} | {"Amount":>{amount_width}}'
+            divider = '-' * len(header)
+            if rows:
+                block_lines = [header, divider, *rows]
+            else:
+                placeholder = (
+                    f'{"-":<{date_width}} | {"No entries":<{note_width}} | {"-":>{amount_width}}'
+                )
+                block_lines = [header, divider, placeholder]
+            content = '<br>'.join(block_lines)
+            return (
+                '<span style="font-family: \'Courier New\', monospace; white-space: pre;">'
+                + content
+                + '</span>'
+            )
+
+        # Process income notes for hover display
+        income_df_raw['Notes_row'] = income_df_raw.apply(format_note_row, axis=1)
+        notes_income = (
+            income_df_raw.groupby(['Month', 'Category'])['Notes_row']
+            .apply(lambda rows: build_notes_block(rows.tolist()))
+            .reset_index(name='Notes_hover')
+        )
+
+        # Process expenses notes for hover display
+        expenses_df_raw['Notes_row'] = expenses_df_raw.apply(format_note_row, axis=1)
+        notes_expenses = (
+            expenses_df_raw.groupby(['Month', 'Category'])['Notes_row']
+            .apply(lambda rows: build_notes_block(rows.tolist()))
+            .reset_index(name='Notes_hover')
+        )
+
+        # Income aggregated data
         income_df = (
-            income_df.groupby(['Month', 'Category'])
-            .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
-            .reset_index()
+            income_df_raw.groupby(['Month', 'Category']).agg({'Amount': 'sum'}).reset_index()
         )
         income_df['Amount'] = round(income_df['Amount']).astype(int)
+        income_df = income_df.merge(notes_income, on=['Month', 'Category'], how='left')
 
-        expenses_df = dataset.copy()
-        expenses_df = expenses_df.loc[expenses_df['Transaction Type'] == 'Spesa']
-        expenses_df['Notes'] = expenses_df['Notes'].fillna('Non specificato')
-        expenses_df['Amount_str'] = expenses_df['Amount'].astype(str)
-        expenses_df['Notes'] = (
-            ' • '
-            + expenses_df['Date']
-            + ': '
-            + expenses_df['Notes']
-            + ' → '
-            + expenses_df['Amount_str']
-            + '€'
-        )
+        # Expenses aggregated data
         expenses_df = (
-            expenses_df.groupby(['Month', 'Category'])
-            .agg({'Amount': 'sum', 'Notes': lambda x: '\n<br>'.join(x)})
-            .reset_index()
+            expenses_df_raw.groupby(['Month', 'Category']).agg({'Amount': 'sum'}).reset_index()
         )
         expenses_df['Amount'] = round(expenses_df['Amount']).astype(int)
+        expenses_df = expenses_df.merge(notes_expenses, on=['Month', 'Category'], how='left')
 
         # create dataviz
 
         # get unique months for the slider steps
         income_months = income_df['Month'].unique()
         expenses_months = expenses_df['Month'].unique()
+
+        # Function to get colors for categories
+        def get_colors(data):
+            return [
+                self.category_color_dict_expenses.get(category, '#FFFFFF')
+                for category in data['Category']
+            ]
 
         # create empty figure
         fig = make_subplots(
@@ -1667,15 +1929,16 @@ class ReportGenerator:
                     values=df_month_income['Amount'],
                     visible=False,
                     name=month,
-                    textinfo='label+value',
-                    texttemplate='<b>%{label}</b><br>%{value} €',
+                    textinfo='label+text',
+                    texttemplate='<b>%{label}</b><br>%{value:,} €',
                     textposition='middle center',
-                    hovertext=df_month_income['Notes'],
-                    marker_colors=[
-                        self.category_color_dict_expenses[cat]
-                        for cat in df_month_income['Category']
-                    ],
-                    hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
+                    textfont={'size': 14, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                    marker={
+                        'colors': get_colors(df_month_income),
+                        'line': {'color': '#ffffff', 'width': 2},
+                    },
+                    customdata=df_month_income['Notes_hover'],
+                    hovertemplate='<span style="font-family: \'Courier New\', monospace;"><b>%{label}</b><br>Total: €%{value:,.0f}</span><br><br>%{customdata}<extra></extra>',
                 ),
                 1,
                 1,
@@ -1690,15 +1953,16 @@ class ReportGenerator:
                     values=df_month_expenses['Amount'],
                     visible=False,
                     name=month,
-                    textinfo='label+value',
-                    texttemplate='<b>%{label}</b><br>%{value} €',
+                    textinfo='label+text',
+                    texttemplate='<b>%{label}</b><br>%{value:,} €',
                     textposition='middle center',
-                    hovertext=df_month_expenses['Notes'],
-                    marker_colors=[
-                        self.category_color_dict_expenses[cat]
-                        for cat in df_month_expenses['Category']
-                    ],
-                    hovertemplate='<b>%{label}</b>: %{value}€ <br><br>%{hovertext}',
+                    textfont={'size': 14, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                    marker={
+                        'colors': get_colors(df_month_expenses),
+                        'line': {'color': '#ffffff', 'width': 2},
+                    },
+                    customdata=df_month_expenses['Notes_hover'],
+                    hovertemplate='<span style="font-family: \'Courier New\', monospace;"><b>%{label}</b><br>Total: €%{value:,.0f}</span><br><br>%{customdata}<extra></extra>',
                 ),
                 1,
                 2,
@@ -1713,15 +1977,9 @@ class ReportGenerator:
         for i in list(range(len(income_months))):
             # dynamic subtitle for info on total income and expenses of the month
             df_temp = income_df[income_df['Month'] == income_months[i]]
-            tot_income = int(round(sum(df_temp['Amount'])))
-
-            # check if there are expenses for the month
-            tot_expenses = 0
-            if i in expenses_months:
-                df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
-                tot_expenses = int(round(sum(df_temp['Amount'])))
-
-            # calculate profit and profit percentage
+            tot_income = round(sum(df_temp['Amount']))
+            df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
+            tot_expenses = round(sum(df_temp['Amount']))
             profit = tot_income - tot_expenses
             profit_perc = round((profit / tot_income) * 100, 2)
 
@@ -1741,7 +1999,44 @@ class ReportGenerator:
                 method='update',
                 args=[
                     {'visible': [False] * len(fig.data)},
-                    {'title': f'Income and Expenses by Month{subtitle}'},
+                    {
+                        'title': {
+                            'text': f'Income and Expenses by Month{subtitle}',
+                            'font': {'size': 20, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                        },
+                        'annotations': [
+                            {
+                                'text': '<b>Income by Category</b>',
+                                'font': {
+                                    'size': 16,
+                                    'color': '#334155',
+                                    'family': 'Inter, sans-serif',
+                                },
+                                'showarrow': False,
+                                'xref': 'paper',
+                                'yref': 'paper',
+                                'x': 0.22,
+                                'y': 1.05,
+                                'xanchor': 'center',
+                                'yanchor': 'bottom',
+                            },
+                            {
+                                'text': '<b>Expenses by Category</b>',
+                                'font': {
+                                    'size': 16,
+                                    'color': '#334155',
+                                    'family': 'Inter, sans-serif',
+                                },
+                                'showarrow': False,
+                                'xref': 'paper',
+                                'yref': 'paper',
+                                'x': 0.78,
+                                'y': 1.05,
+                                'xanchor': 'center',
+                                'yanchor': 'bottom',
+                            },
+                        ],
+                    },
                 ],  # layout attribute
                 label=custom_label,  # set the name of each month
             )
@@ -1757,9 +2052,9 @@ class ReportGenerator:
 
         # dynamic subtitle for info on total income and expenses of first month
         df_temp = income_df[income_df['Month'] == income_months[0]]
-        tot_income = int(round(sum(df_temp['Amount'])))
+        tot_income = round(sum(df_temp['Amount']))
         df_temp = expenses_df[expenses_df['Month'] == expenses_months[0]]
-        tot_expenses = int(round(sum(df_temp['Amount'])))
+        tot_expenses = round(sum(df_temp['Amount']))
         profit = tot_income - tot_expenses
         profit_perc = round((profit / tot_income) * 100, 2)
 
@@ -1774,31 +2069,55 @@ class ReportGenerator:
             f'<b>{tot_expenses}€</b><br>Profit: <b>{profit_str}</b> ({profit_perc}%)</sub>'
         )
 
-        # Customize the layout
+        # Customize the layout with modern styling
         fig.update_layout(
             sliders=sliders,
-            title=f'Income and Expenses by Month{subtitle}',
+            title={
+                'text': f'Income and Expenses by Month{subtitle}',
+                'font': {'size': 20, 'color': '#334155', 'family': 'Inter, sans-serif'},
+            },
             width=1980,
             height=800,
             showlegend=False,
-            margin=dict(t=160),  # Increase top margin for padding
+            paper_bgcolor='#ffffff',
+            margin={'t': 160, 'b': 40, 'l': 40, 'r': 40},
+            font={'family': 'Inter, sans-serif', 'color': '#334155'},
+            hoverlabel={
+                'bgcolor': '#f8fafc',
+                'font_size': 13,
+                'font_family': 'Inter, sans-serif',
+                'bordercolor': '#e2e8f0',
+                'font_color': '#334155',
+            },
+            annotations=[
+                {
+                    'text': '<b>Income by Category</b>',
+                    'font': {'size': 16, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                    'showarrow': False,
+                    'xref': 'paper',
+                    'yref': 'paper',
+                    'x': 0.22,
+                    'y': 1.05,
+                    'xanchor': 'center',
+                    'yanchor': 'bottom',
+                },
+                {
+                    'text': '<b>Expenses by Category</b>',
+                    'font': {'size': 16, 'color': '#334155', 'family': 'Inter, sans-serif'},
+                    'showarrow': False,
+                    'xref': 'paper',
+                    'yref': 'paper',
+                    'x': 0.78,
+                    'y': 1.05,
+                    'xanchor': 'center',
+                    'yanchor': 'bottom',
+                },
+            ],
         )
 
         # Adjust slider position
         for slider in fig['layout']['sliders']:
             slider['pad'] = dict(t=15, b=45)
-
-        # Update subplot titles to include padding
-        fig.update_annotations(
-            dict(
-                xref='paper',
-                yref='paper',
-                x=0.5,
-                xanchor='center',
-                yanchor='bottom',
-                y=-0.15,  # Adjust this value for vertical positioning of subplot titles
-            )
-        )
 
         return fig
 
@@ -1852,7 +2171,7 @@ class ReportGenerator:
 
         # Subtitle text with total transfers
         subtitle_text = (
-            f'<br><sub>Total Transfers: {round(sum(total_transfers),2)}€ '
+            f'<br><sub>Total Transfers: {round(sum(total_transfers), 2)}€ '
             f'in {len(total_transfers)} account(s)</sub>'
         )
 
@@ -2229,7 +2548,7 @@ class ReportGenerator:
                     <!DOCTYPE html>
                     <html>
                     <head>
-                        <title>{title.replace('<br><i>',' ').replace('</i>','')}</title>
+                        <title>{title.replace('<br><i>', ' ').replace('</i>', '')}</title>
                         <link rel="icon" type="image/svg" href="{icon_path}">
                         <style>
                             .centered {{
@@ -2253,7 +2572,7 @@ class ReportGenerator:
                 output_file.write(fig_list[0].to_html(full_html=False, include_plotlyjs='cdn'))
 
             with open(path, 'a', encoding='utf-8') as output_file:
-                for fig in fig_list[1:]:
+                for fig in fig_list[1:]:  # noqa
                     output_file.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
 
             with open(path, 'a', encoding='utf-8') as output_file:
