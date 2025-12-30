@@ -1717,7 +1717,7 @@ class ReportGenerator:
 
             # check if there are expenses for the month
             tot_expenses = 0
-            if i in expenses_months:
+            if i < len(expenses_months) and expenses_months[i] in expenses_months:
                 df_temp = expenses_df[expenses_df['Month'] == expenses_months[i]]
                 tot_expenses = int(round(sum(df_temp['Amount'])))
 
@@ -1852,7 +1852,7 @@ class ReportGenerator:
 
         # Subtitle text with total transfers
         subtitle_text = (
-            f'<br><sub>Total Transfers: {round(sum(total_transfers),2)}€ '
+            f'<br><sub>Total Transfers: {round(sum(total_transfers), 2)}€ '
             f'in {len(total_transfers)} account(s)</sub>'
         )
 
@@ -2229,7 +2229,7 @@ class ReportGenerator:
                     <!DOCTYPE html>
                     <html>
                     <head>
-                        <title>{title.replace('<br><i>',' ').replace('</i>','')}</title>
+                        <title>{title.replace('<br><i>', ' ').replace('</i>', '')}</title>
                         <link rel="icon" type="image/svg" href="{icon_path}">
                         <style>
                             .centered {{
